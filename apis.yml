@@ -1,0 +1,61 @@
+name: Plinth US Grants Data
+description: >-
+  A JSON API over the entire US grantmaking universe (~205,000 funders and 17.9M grants) read from public IRS Form
+  990/990-PF e-file data and the IRS Business Master File. Offers REST endpoints for grants, organizations, search, an
+  ad-hoc SQL endpoint, and a hosted MCP connector for AI agents.
+url: https://plinth-us-grants-data.apievangelist.com/apis.yml
+created: '2026-08-13'
+modified: '2026-08-13'
+specificationVersion: '0.21'
+tags:
+  - Philanthropy
+  - Grants
+  - Nonprofits
+  - Foundations
+  - IRS 990
+  - Open Data
+  - Government Spending
+  - Research
+  - Agents
+  - REST
+  - JSON
+  - MCP
+  - SQL
+apis:
+  - name: Plinth Grants API
+    description: >-
+      REST/JSON API over US grantmaking data from IRS filings, with grants, organization, search, and ad-hoc SQL
+      endpoints, plus a hosted MCP connector and llms.txt. OpenAPI 3.1 route-generated and Spectral-linted.
+    humanURL: https://data.useplinth.com/developers
+    baseURL: https://data.useplinth.com/api
+    tags:
+      - Philanthropy
+      - Grants
+      - Nonprofits
+      - Foundations
+      - IRS 990
+      - Open Data
+      - Government Spending
+      - Research
+      - Agents
+      - REST
+      - JSON
+      - MCP
+      - SQL
+    properties:
+      - type: OpenAPI
+        url: https://data.useplinth.com/openapi.json
+      - type: Documentation
+        url: https://data.useplinth.com/developers
+      - type: LLMsTxt
+        url: https://data.useplinth.com/llms.txt
+      - type: MCPServer
+        url: https://data.useplinth.com/api/connector/mcp
+maintainers:
+  - FN: Plinth (Time to Spare Ltd)
+    url: https://www.useplinth.com
+generated:
+  by: apis.io/add
+  model: claude-opus-4-8
+  confidence: 97
+  at: '2026-08-13T20:59:07.936Z'
