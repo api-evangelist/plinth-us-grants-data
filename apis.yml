@@ -1,11 +1,17 @@
 name: Plinth US Grants Data
 description: >-
-  A JSON API over the entire US grantmaking universe (~205,000 funders and 17.9M grants) read from public IRS Form
-  990/990-PF e-file data and the IRS Business Master File. Offers REST endpoints for grants, organizations, search, an
-  ad-hoc SQL endpoint, and a hosted MCP connector for AI agents.
+  A JSON API over the entire US grantmaking universe — about 205,000 grantmaking foundations and
+  17.9 million grants, read from public IRS Form 990, 990-EZ and 990-PF e-file filings and the IRS
+  Business Master File. The funder-grantee graph traverses in both directions: filter by funder_id
+  for everything a foundation funded, or by recip_id for every funder behind a nonprofit. Offers
+  REST endpoints for grants, organization profiles, an IRS compliance and OFAC screen, an ad-hoc
+  read-only SQL endpoint over a 31-table warehouse, and a hosted OAuth 2.1 MCP connector for AI
+  agents. Entity resolution is free and unmetered. Published by Plinth, trading name of Time to
+  Spare Ltd (UK Companies House 11530023), which also operates plinth.org.uk in the UK.
+image: https://data.useplinth.com/plinth-logo.svg
 url: https://plinth-us-grants-data.apievangelist.com/apis.yml
 created: '2026-08-13'
-modified: '2026-08-13'
+modified: '2026-08-14'
 specificationVersion: '0.21'
 tags:
   - Philanthropy
@@ -22,40 +28,226 @@ tags:
   - MCP
   - SQL
 apis:
-  - name: Plinth Grants API
-    description: >-
-      REST/JSON API over US grantmaking data from IRS filings, with grants, organization, search, and ad-hoc SQL
-      endpoints, plus a hosted MCP connector and llms.txt. OpenAPI 3.1 route-generated and Spectral-linted.
-    humanURL: https://data.useplinth.com/developers
-    baseURL: https://data.useplinth.com/api
-    tags:
-      - Philanthropy
-      - Grants
-      - Nonprofits
-      - Foundations
-      - IRS 990
-      - Open Data
-      - Government Spending
-      - Research
-      - Agents
-      - REST
-      - JSON
-      - MCP
-      - SQL
-    properties:
-      - type: OpenAPI
-        url: https://data.useplinth.com/openapi.json
-      - type: Documentation
-        url: https://data.useplinth.com/developers
-      - type: LLMsTxt
-        url: https://data.useplinth.com/llms.txt
-      - type: MCPServer
-        url: https://data.useplinth.com/api/connector/mcp
+- aid: plinth-us-grants-data:plinth-us-grants-data-analyze-api
+  name: Plinth US Grants Data Analyze API
+  description: Plain-English questions answered with SQL the service writes itself.
+  humanURL: https://data.useplinth.com/developers
+  baseURL: https://data.useplinth.com/api
+  tags:
+  - Analyze
+  properties:
+  - type: OpenAPI
+    url: openapi/plinth-us-grants-data-analyze-api-openapi.yml
+  - type: Documentation
+    url: https://data.useplinth.com/developers
+  - type: LLMsTxt
+    url: llms/plinth-us-grants-data-llms.txt
+  - type: LLMsTxt
+    url: https://data.useplinth.com/llms.txt
+  - type: ToolCrosswalk
+    url: mcp/plinth-us-grants-data-tool-crosswalk.yml
+  - type: RateLimits
+    url: rate-limits/plinth-us-grants-data-rate-limits.yml
+  - type: ErrorCatalog
+    url: errors/plinth-us-grants-data-problem-types.yml
+  - type: DataModel
+    url: data-model/plinth-us-grants-data-data-model.yml
+  - type: Conventions
+    url: conventions/plinth-us-grants-data-conventions.yml
+  - type: SpectralRules
+    url: rules/plinth-us-grants-data-spectral.yaml
+  - type: SpectralRules
+    url: https://data.useplinth.com/spectral/grants-api.yaml
+- aid: plinth-us-grants-data:plinth-us-grants-data-grants-api
+  name: Plinth US Grants Data Grants API
+  description: 'The funder-grantee graph: grants, funders, recipients and aggregates.'
+  humanURL: https://data.useplinth.com/developers
+  baseURL: https://data.useplinth.com/api
+  tags:
+  - Grants
+  properties:
+  - type: OpenAPI
+    url: openapi/plinth-us-grants-data-grants-api-openapi.yml
+  - type: Documentation
+    url: https://data.useplinth.com/developers
+  - type: LLMsTxt
+    url: llms/plinth-us-grants-data-llms.txt
+  - type: LLMsTxt
+    url: https://data.useplinth.com/llms.txt
+  - type: ToolCrosswalk
+    url: mcp/plinth-us-grants-data-tool-crosswalk.yml
+  - type: RateLimits
+    url: rate-limits/plinth-us-grants-data-rate-limits.yml
+  - type: ErrorCatalog
+    url: errors/plinth-us-grants-data-problem-types.yml
+  - type: DataModel
+    url: data-model/plinth-us-grants-data-data-model.yml
+  - type: Conventions
+    url: conventions/plinth-us-grants-data-conventions.yml
+  - type: SpectralRules
+    url: rules/plinth-us-grants-data-spectral.yaml
+  - type: SpectralRules
+    url: https://data.useplinth.com/spectral/grants-api.yaml
+- aid: plinth-us-grants-data:plinth-us-grants-data-organizations-api
+  name: Plinth US Grants Data Organizations API
+  description: Per-organization profiles, financials and IRS compliance facets.
+  humanURL: https://data.useplinth.com/developers
+  baseURL: https://data.useplinth.com/api
+  tags:
+  - Organizations
+  properties:
+  - type: OpenAPI
+    url: openapi/plinth-us-grants-data-organizations-api-openapi.yml
+  - type: Documentation
+    url: https://data.useplinth.com/developers
+  - type: LLMsTxt
+    url: llms/plinth-us-grants-data-llms.txt
+  - type: LLMsTxt
+    url: https://data.useplinth.com/llms.txt
+  - type: ToolCrosswalk
+    url: mcp/plinth-us-grants-data-tool-crosswalk.yml
+  - type: RateLimits
+    url: rate-limits/plinth-us-grants-data-rate-limits.yml
+  - type: ErrorCatalog
+    url: errors/plinth-us-grants-data-problem-types.yml
+  - type: DataModel
+    url: data-model/plinth-us-grants-data-data-model.yml
+  - type: Conventions
+    url: conventions/plinth-us-grants-data-conventions.yml
+  - type: SpectralRules
+    url: rules/plinth-us-grants-data-spectral.yaml
+  - type: SpectralRules
+    url: https://data.useplinth.com/spectral/grants-api.yaml
+- aid: plinth-us-grants-data:plinth-us-grants-data-resolve-api
+  name: Plinth US Grants Data Resolve API
+  description: Turn an organization name into an EIN and a canonical URL. No key required.
+  humanURL: https://data.useplinth.com/developers
+  baseURL: https://data.useplinth.com/api
+  tags:
+  - Resolve
+  properties:
+  - type: OpenAPI
+    url: openapi/plinth-us-grants-data-resolve-api-openapi.yml
+  - type: Documentation
+    url: https://data.useplinth.com/developers
+  - type: LLMsTxt
+    url: llms/plinth-us-grants-data-llms.txt
+  - type: LLMsTxt
+    url: https://data.useplinth.com/llms.txt
+  - type: ToolCrosswalk
+    url: mcp/plinth-us-grants-data-tool-crosswalk.yml
+  - type: RateLimits
+    url: rate-limits/plinth-us-grants-data-rate-limits.yml
+  - type: ErrorCatalog
+    url: errors/plinth-us-grants-data-problem-types.yml
+  - type: DataModel
+    url: data-model/plinth-us-grants-data-data-model.yml
+  - type: Conventions
+    url: conventions/plinth-us-grants-data-conventions.yml
+  - type: SpectralRules
+    url: rules/plinth-us-grants-data-spectral.yaml
+  - type: SpectralRules
+    url: https://data.useplinth.com/spectral/grants-api.yaml
+- aid: plinth-us-grants-data:plinth-us-grants-data-sql-api
+  name: Plinth US Grants Data SQL API
+  description: Ad-hoc read-only SQL over the warehouse. Paid keys only.
+  humanURL: https://data.useplinth.com/developers
+  baseURL: https://data.useplinth.com/api
+  tags:
+  - SQL
+  properties:
+  - type: OpenAPI
+    url: openapi/plinth-us-grants-data-sql-api-openapi.yml
+  - type: Documentation
+    url: https://data.useplinth.com/developers
+  - type: LLMsTxt
+    url: llms/plinth-us-grants-data-llms.txt
+  - type: LLMsTxt
+    url: https://data.useplinth.com/llms.txt
+  - type: ToolCrosswalk
+    url: mcp/plinth-us-grants-data-tool-crosswalk.yml
+  - type: RateLimits
+    url: rate-limits/plinth-us-grants-data-rate-limits.yml
+  - type: ErrorCatalog
+    url: errors/plinth-us-grants-data-problem-types.yml
+  - type: DataModel
+    url: data-model/plinth-us-grants-data-data-model.yml
+  - type: Conventions
+    url: conventions/plinth-us-grants-data-conventions.yml
+  - type: SpectralRules
+    url: rules/plinth-us-grants-data-spectral.yaml
+  - type: SpectralRules
+    url: https://data.useplinth.com/spectral/grants-api.yaml
 maintainers:
   - FN: Plinth (Time to Spare Ltd)
+    email: data@useplinth.com
+    organizationName: Plinth (Time to Spare Ltd)
     url: https://www.useplinth.com
+    X-twitter: useplinth
 generated:
   by: apis.io/add
   model: claude-opus-4-8
   confidence: 97
   at: '2026-08-13T20:59:07.936Z'
+common:
+- type: MCPServer
+  url: https://data.useplinth.com/api/connector/mcp
+- type: MCPServer
+  url: mcp/plinth-us-grants-data-mcp.yml
+- type: Overlay
+  url: overlays/plinth-us-grants-data-grants-api-overlay.yaml
+- type: DeveloperPortal
+  url: https://data.useplinth.com/developers
+- type: Documentation
+  url: https://data.useplinth.com/developers
+- type: APIReference
+  url: https://data.useplinth.com/developers
+- type: GettingStarted
+  url: https://data.useplinth.com/developers#auth
+- type: Support
+  url: https://data.useplinth.com/developers#governance
+- type: Contact
+  url: mailto:data@useplinth.com
+- type: Pricing
+  url: https://data.useplinth.com/pricing
+- type: SignUp
+  url: https://data.useplinth.com/account
+- type: Login
+  url: https://data.useplinth.com/account
+- type: TermsOfService
+  url: https://www.useplinth.com/terms
+- type: PrivacyPolicy
+  url: https://www.useplinth.com/privacy
+- type: Authentication
+  url: authentication/plinth-us-grants-data-authentication.yml
+- type: OAuthScopes
+  url: scopes/plinth-us-grants-data-scopes.yml
+- type: Security
+  url: security/plinth-us-grants-data-vulnerability-disclosure.yml
+- type: VulnerabilityDisclosure
+  url: security/plinth-us-grants-data-vulnerability-disclosure.yml
+- type: DomainSecurity
+  url: security/plinth-us-grants-data-domain-security.yml
+- type: WellKnown
+  url: well-known/plinth-us-grants-data-well-known.yml
+- type: SecurityTxt
+  url: well-known/plinth-us-grants-data-security.txt
+- type: APICatalog
+  url: well-known/plinth-us-grants-data-api-catalog.json
+- type: Conformance
+  url: conformance/plinth-us-grants-data-conformance.yml
+- type: Lifecycle
+  url: lifecycle/plinth-us-grants-data-lifecycle.yml
+- type: Vocabulary
+  url: vocabulary/plinth-us-grants-data-vocabulary.yml
+- type: Plans
+  url: plans/plinth-us-grants-data-plans-pricing.yml
+- type: Packages
+  url: packages/plinth-us-grants-data-packages.yml
+- type: AgentSkill
+  url: skills/_index.yml
+x-enrichment:
+  date: '2026-08-14'
+  status: enriched
+  artifacts_added: 31
+  pass: local-v1

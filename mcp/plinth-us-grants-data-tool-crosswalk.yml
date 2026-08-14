@@ -1,0 +1,107 @@
+generated: '2026-08-14'
+method: derived
+source: >-
+  Derived by aligning the three MCP capabilities documented at https://data.useplinth.com/connect
+  with the 10-operation REST OpenAPI 3.1 at openapi/plinth-us-grants-data-openapi.json. The live
+  MCP tools/list is OAuth-gated (401, see mcp/plinth-us-grants-data-mcp.yml), so the binding is by
+  name and semantics, not by observed inputSchema — confidence is set accordingly on every row.
+purpose: >-
+  Bind each MCP capability to the REST operationId(s) that back it, so the tool inherits a REAL
+  inputSchema (the operation's parameters/requestBody in the spec) rather than a guessed one, and
+  so the divergence between Plinth's two surfaces is visible. The finding: the MCP surface is
+  NARROWER and more opinionated than the REST surface — three conversational capabilities over a
+  ten-operation API — and one MCP capability (the foundation dossier) has no single REST
+  equivalent at all.
+
+surfaces:
+  rest_openapi: openapi/plinth-us-grants-data-openapi.json    # OpenAPI 3.1.0, 10 operations, 5 tags
+  rest_base: https://data.useplinth.com/api
+  rest_gated: partial                                          # X-API-Key on 9 of 10; GET /api/search is open
+  graphql: null                                                # no GraphQL surface published
+  mcp: https://data.useplinth.com/api/connector/mcp
+  mcp_gated: true                                              # OAuth 2.1 + PKCE; tools/list 401 unauthenticated
+  mcp_plan_gated: true                                         # requires the For consultants ($250/mo) plan
+
+crosswalk:
+  - tool: Search organizations
+    category: resolve
+    rest: [searchOrganizations]
+    binding: rest
+    confidence: high
+    note: >-
+      Direct match. GET /api/search is the only name-to-EIN resolver in the API, it is explicitly
+      described in the spec as "the step that precedes every other call when you have a name rather
+      than an EIN", and it is the one operation with `security: []` (no key, unmetered). The tool
+      inherits q (required), state (2-letter), and mode (text|semantic|hybrid).
+
+  - tool: Ask a foundation a question
+    category: analysis
+    rest: [askQuestion]
+    binding: rest
+    confidence: high
+    note: >-
+      POST /api/analyze — "Ask a question about the corpus in plain English; the service writes and
+      runs its own SQL and streams the answer back as Server-Sent Events." The MCP framing narrows
+      it to one foundation ("grounded strictly in that foundation's own IRS filings"), so the tool
+      most likely pins an EIN into the same backend. Caveat: /api/analyze declares no requestBody
+      in the OpenAPI, so the REST operation cannot supply a real inputSchema for this tool — the
+      spec is thin exactly where the crosswalk needs it. See rest_only note below.
+
+  - tool: Get a foundation dossier
+    category: profile
+    rest: [getPremier, getEssentials, getCompliance, getGrantsSummary, listRecipients]
+    binding: composite
+    confidence: medium
+    note: >-
+      No single REST operation returns this. The documented payload — "giving, causes, grantee
+      network, outcomes, look-alikes" — spans at least five operations: getPremier/getEssentials
+      for the profile and financials, getCompliance for IRS status, getGrantsSummary
+      (funder_id=<ein>) for giving totals, and listRecipients (funder_id=<ein>) for the grantee
+      network. "Look-alikes" and "outcomes" have NO REST equivalent whatsoever: look-alike
+      prospecting is sold as a For-foundations feature and the analytical summary is rendered on
+      the public foundation page, not exposed as an endpoint. This tool is therefore partly
+      mcp_only — see below.
+
+mcp_only:
+  - tool: Get a foundation dossier (look-alikes / analytical summary component)
+    reason: >-
+      Look-alike funder prospecting and Plinth's per-foundation analytical narrative are not
+      published as REST operations. The pricing page lists "Look-alike prospecting across every US
+      funder" under the For-foundations tier, and the narrative is rendered on the HTML foundation
+      page (https://data.useplinth.com/foundation/<name>-<EIN>). An agent on the MCP surface can
+      reach analysis that no REST client can.
+
+rest_only:
+  - operation: listGrants
+    path: GET /api/grants/transactions
+    reason: >-
+      Individual grant rows. No documented MCP capability returns row-level grants; the connector
+      is pitched at dossiers and questions, not extraction.
+  - operation: listFunders
+    path: GET /api/grants/funders
+    reason: Funder league tables. No documented MCP equivalent.
+  - operation: runSql
+    path: POST /api/sql
+    reason: >-
+      Ad-hoc read-only SQL over the 31-table warehouse. This is the single most powerful operation
+      in the API and it has NO documented MCP tool, which is notable: the /connect page routes
+      conversational users to "Ask a foundation a question" (which writes its own SQL server-side)
+      rather than exposing the SQL surface to the agent. An agent that needs a cross-organization
+      aggregate must use the REST key path, not the connector.
+  - operation: getCompliance
+    path: GET /api/compliance/{ein}
+    reason: >-
+      Reachable only as a component of the dossier tool; there is no standalone MCP compliance/OFAC
+      screen.
+
+coverage:
+  rest_operations: 10
+  mcp_tools_documented: 3
+  bound_high_confidence: 2
+  bound_medium_confidence: 1
+  mcp_only_components: 1
+  rest_only_operations: 4
+  note: >-
+    Neither surface is a superset of the other. Two of three MCP tools bind cleanly to a REST
+    operation; the third is a composite that also reaches analysis with no REST equivalent; and
+    four REST operations — including the whole SQL surface — have no MCP tool at all.

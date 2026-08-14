@@ -1,0 +1,197 @@
+openapi: 3.2.0
+info:
+  title: Plinth Grants Organizations API
+  summary: US foundation and nonprofit funding data from public IRS Form 990 and 990-PF filings.
+  description: 'A read API over the US grantmaking universe, read from public IRS Form 990, 990-EZ and 990-PF e-file filings.
+
+
+    The funder-grantee graph traverses in BOTH directions: filter by `funder_id` for everything a foundation funded, or by `recip_id` for every funder behind a nonprofit.
+
+
+    Start with `/api/search` to turn an organization name into an EIN and a canonical page URL — it needs no key. Every other endpoint requires one (free tier: 50 calls a month).
+
+
+    Figures are read directly from named IRS filings. The IRS releases e-file data on a 12-24 month lag, so every figure is dated to its fiscal year rather than to today. Funding relationships are reported as association, never as causation. Organizations that do not e-file may be absent.'
+  version: 1.0.0
+  contact:
+    name: Plinth
+    url: https://data.useplinth.com/developers
+  license:
+    name: 'Source data: IRS public domain'
+    url: https://www.irs.gov/charities-non-profits/tax-exempt-organization-search-bulk-data-downloads
+  termsOfService: https://www.useplinth.com/terms
+servers:
+- url: https://data.useplinth.com
+  description: Plinth US philanthropy data
+security:
+- ApiKeyAuth: []
+tags:
+- name: Organizations
+  description: Per-organization profiles, financials and IRS compliance facets.
+paths:
+  /api/compliance/{ein}:
+    get:
+      summary: IRS status and sanctions screen for one organization
+      operationId: getCompliance
+      parameters:
+      - name: ein
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Ein
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Organizations
+      description: Exemption subsection, deductibility, foundation type, NTEE, IRS auto-revocation status and an OFAC (Treasury SDN) name screen. Refreshed monthly, so fresher than the 990 financials. The OFAC field is a triage signal — an entity NAME screen, not a sanctions determination.
+  /api/essentials/{ein}:
+    get:
+      summary: Core profile for one organization
+      operationId: getEssentials
+      parameters:
+      - name: ein
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Ein
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Organizations
+      description: Name, location, NTEE classification and a financials summary from the latest filing we have parsed.
+  /api/premier/{ein}:
+    get:
+      summary: Full profile for one organization
+      operationId: getPremier
+      parameters:
+      - name: ein
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Ein
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Organizations
+      description: Everything in essentials plus full financials and the resolved geographic service footprint.
+components:
+  responses:
+    Unauthorized:
+      description: No API key, or a key we do not recognize.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 401
+            message: missing or invalid API key
+    PaymentRequired:
+      description: The monthly allowance is spent, the account is inactive, or the endpoint needs a paid plan. The message says which.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 402
+            message: monthly API call allowance spent
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    ApiError:
+      type: object
+      description: Every failure answers with this envelope; `message` is safe to show a user.
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+      - code
+      - message
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Free key includes 50 calls a month; higher volume on a paid plan. Get one at https://data.useplinth.com/pricing.
+externalDocs:
+  description: Developer documentation
+  url: https://data.useplinth.com/developers

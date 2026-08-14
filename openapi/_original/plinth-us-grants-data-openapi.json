@@ -1,0 +1,1214 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Plinth Grants API",
+    "summary": "US foundation and nonprofit funding data from public IRS Form 990 and 990-PF filings.",
+    "description": "A read API over the US grantmaking universe, read from public IRS Form 990, 990-EZ and 990-PF e-file filings.\n\nThe funder-grantee graph traverses in BOTH directions: filter by `funder_id` for everything a foundation funded, or by `recip_id` for every funder behind a nonprofit.\n\nStart with `/api/search` to turn an organization name into an EIN and a canonical page URL — it needs no key. Every other endpoint requires one (free tier: 50 calls a month).\n\nFigures are read directly from named IRS filings. The IRS releases e-file data on a 12-24 month lag, so every figure is dated to its fiscal year rather than to today. Funding relationships are reported as association, never as causation. Organizations that do not e-file may be absent.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Plinth",
+      "url": "https://data.useplinth.com/developers"
+    },
+    "license": {
+      "name": "Source data: IRS public domain",
+      "url": "https://www.irs.gov/charities-non-profits/tax-exempt-organization-search-bulk-data-downloads"
+    },
+    "termsOfService": "https://www.useplinth.com/terms"
+  },
+  "paths": {
+    "/api/grants/transactions": {
+      "get": {
+        "summary": "List individual grants",
+        "operationId": "listGrants",
+        "parameters": [
+          {
+            "name": "funder_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Funder Id"
+            }
+          },
+          {
+            "name": "recip_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recip Id"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject"
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Location"
+            }
+          },
+          {
+            "name": "min_amt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Amt"
+            }
+          },
+          {
+            "name": "max_amt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Amt"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort By"
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort Order"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Grants"
+        ],
+        "description": "Individual grant rows — funder, recipient, amount, fiscal year, cause and the purpose text as filed. The graph traverses both ways: `funder_id` for everything a foundation funded, `recip_id` for every funder behind a nonprofit."
+      }
+    },
+    "/api/grants/funders": {
+      "get": {
+        "summary": "Rank funders by giving",
+        "operationId": "listFunders",
+        "parameters": [
+          {
+            "name": "funder_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Funder Id"
+            }
+          },
+          {
+            "name": "recip_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recip Id"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject"
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Location"
+            }
+          },
+          {
+            "name": "min_amt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Amt"
+            }
+          },
+          {
+            "name": "max_amt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Amt"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Grants"
+        ],
+        "description": "Funders matching the filter, ranked by total dollars: amount, grant count, distinct recipients reached, and the first and last fiscal years they were active."
+      }
+    },
+    "/api/grants/recipients": {
+      "get": {
+        "summary": "Rank recipients by what they received",
+        "operationId": "listRecipients",
+        "parameters": [
+          {
+            "name": "funder_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Funder Id"
+            }
+          },
+          {
+            "name": "recip_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recip Id"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject"
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Location"
+            }
+          },
+          {
+            "name": "min_amt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Amt"
+            }
+          },
+          {
+            "name": "max_amt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Amt"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Page"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Grants"
+        ],
+        "description": "Recipient organizations matching the filter, ranked by dollars received, with location and how many distinct funders backed them."
+      }
+    },
+    "/api/grants/summary": {
+      "get": {
+        "summary": "Aggregate totals for a filter",
+        "operationId": "getGrantsSummary",
+        "parameters": [
+          {
+            "name": "funder_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Funder Id"
+            }
+          },
+          {
+            "name": "recip_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recip Id"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject"
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Location"
+            }
+          },
+          {
+            "name": "min_amt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Amt"
+            }
+          },
+          {
+            "name": "max_amt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Amt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Grants"
+        ],
+        "description": "One call for the whole shape of a filter: total dollars, grant count, distinct funders and recipients, plus a year-by-year breakdown. Cheaper than paging the rows to count them."
+      }
+    },
+    "/api/compliance/{ein}": {
+      "get": {
+        "summary": "IRS status and sanctions screen for one organization",
+        "operationId": "getCompliance",
+        "parameters": [
+          {
+            "name": "ein",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ein"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Organizations"
+        ],
+        "description": "Exemption subsection, deductibility, foundation type, NTEE, IRS auto-revocation status and an OFAC (Treasury SDN) name screen. Refreshed monthly, so fresher than the 990 financials. The OFAC field is a triage signal — an entity NAME screen, not a sanctions determination."
+      }
+    },
+    "/api/essentials/{ein}": {
+      "get": {
+        "summary": "Core profile for one organization",
+        "operationId": "getEssentials",
+        "parameters": [
+          {
+            "name": "ein",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ein"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Organizations"
+        ],
+        "description": "Name, location, NTEE classification and a financials summary from the latest filing we have parsed."
+      }
+    },
+    "/api/premier/{ein}": {
+      "get": {
+        "summary": "Full profile for one organization",
+        "operationId": "getPremier",
+        "parameters": [
+          {
+            "name": "ein",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Ein"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Organizations"
+        ],
+        "description": "Everything in essentials plus full financials and the resolved geographic service footprint."
+      }
+    },
+    "/api/sql": {
+      "post": {
+        "summary": "Run a read-only SQL query over the warehouse",
+        "description": "Query the grants warehouse directly when the fixed endpoints can't express the question.\n\nAccepts ONE read-only statement: `SELECT` or `WITH ... SELECT`. Multiple statements, any DDL/DML, and\nthe file-reading functions (`read_parquet`, `read_csv`, …) are rejected — you query named views, not\nfiles. The view list, every column, and the caveats that decide whether an answer is right are\ndocumented at https://data.useplinth.com/developers/schema.\n\nTwo ceilings, and they bound different things. Results are capped at 2,000 rows\n(`truncated: true` says you hit it) — aggregate in SQL rather than paging. Separately, a query is\ncancelled after 30 seconds: the row cap limits the response, this limits the scan behind\nit. A cancelled query returns 400, so narrow it with a `tax_year` or `funder_ein` filter and retry.\n\nRequires a paid key — there is no free SQL tier — and costs one call from your monthly allowance, the\nsame as any other endpoint. Asset-intelligence and governance tables additionally need Pro.",
+        "operationId": "runSql",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "sql": {
+                    "type": "string",
+                    "description": "A single read-only SELECT (or WITH ... SELECT) statement.",
+                    "example": "SELECT funder_ein, sum(amount) AS total, count(*) AS n FROM grants WHERE tax_year = 2023 GROUP BY 1 ORDER BY total DESC LIMIT 10"
+                  }
+                },
+                "type": "object",
+                "required": [
+                  "sql"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          }
+        },
+        "tags": [
+          "SQL"
+        ]
+      }
+    },
+    "/api/analyze": {
+      "post": {
+        "summary": "Analyze",
+        "operationId": "askQuestion",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "402": {
+            "$ref": "#/components/responses/PaymentRequired"
+          }
+        },
+        "description": "Ask a question about the corpus in plain English; the service writes and runs its own SQL and streams the answer back as Server-Sent Events. Metered separately from the REST endpoints: three free questions per visitor per day, then a paid key.",
+        "tags": [
+          "Analyze"
+        ]
+      }
+    },
+    "/api/search": {
+      "get": {
+        "tags": [
+          "Resolve"
+        ],
+        "operationId": "searchOrganizations",
+        "summary": "Resolve an organization name to an EIN and canonical URL",
+        "description": "Entity resolution — the step that precedes every other call when you have a name rather than an EIN. Searches every US grantmaking foundation and funded nonprofit. **No API key required and not metered.**",
+        "security": [],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "examples": [
+                "barancik"
+              ]
+            },
+            "description": "Search text. Fewer than 2 characters returns an empty result set."
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "examples": [
+                "FL"
+              ]
+            },
+            "description": "Narrow to a US state, two-letter code."
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "text",
+                "semantic",
+                "hybrid"
+              ],
+              "default": "text"
+            },
+            "description": "text is keyword matching; semantic/hybrid add vector matching and fall back to text if unavailable."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching organizations, best first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "description": "The mode actually served (may differ from the one requested if it degraded)."
+                    },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ein": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "description": "Human-readable kind: Grantmaking foundation or Nonprofit."
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "foundation",
+                              "nonprofit"
+                            ]
+                          },
+                          "location": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "description": "US state, two-letter code."
+                          },
+                          "url": {
+                            "type": "string",
+                            "format": "uri",
+                            "description": "Absolute canonical URL of the organization's page — stable, and citable."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ApiError": {
+        "type": "object",
+        "description": "Every failure answers with this envelope; `message` is safe to show a user.",
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Free key includes 50 calls a month; higher volume on a paid plan. Get one at https://data.useplinth.com/pricing."
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "No API key, or a key we do not recognize.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            },
+            "example": {
+              "code": 401,
+              "message": "missing or invalid API key"
+            }
+          }
+        }
+      },
+      "PaymentRequired": {
+        "description": "The monthly allowance is spent, the account is inactive, or the endpoint needs a paid plan. The message says which.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            },
+            "example": {
+              "code": 402,
+              "message": "monthly API call allowance spent"
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://data.useplinth.com",
+      "description": "Plinth US philanthropy data"
+    }
+  ],
+  "externalDocs": {
+    "description": "Developer documentation",
+    "url": "https://data.useplinth.com/developers"
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Resolve",
+      "description": "Turn an organization name into an EIN and a canonical URL. No key required."
+    },
+    {
+      "name": "Grants",
+      "description": "The funder-grantee graph: grants, funders, recipients and aggregates."
+    },
+    {
+      "name": "Organizations",
+      "description": "Per-organization profiles, financials and IRS compliance facets."
+    },
+    {
+      "name": "SQL",
+      "description": "Ad-hoc read-only SQL over the warehouse. Paid keys only."
+    },
+    {
+      "name": "Analyze",
+      "description": "Plain-English questions answered with SQL the service writes itself."
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+openapi: 3.2.0
+info:
+  title: Plinth Grants Resolve API
+  summary: US foundation and nonprofit funding data from public IRS Form 990 and 990-PF filings.
+  description: 'A read API over the US grantmaking universe, read from public IRS Form 990, 990-EZ and 990-PF e-file filings.
+
+
+    The funder-grantee graph traverses in BOTH directions: filter by `funder_id` for everything a foundation funded, or by `recip_id` for every funder behind a nonprofit.
+
+
+    Start with `/api/search` to turn an organization name into an EIN and a canonical page URL — it needs no key. Every other endpoint requires one (free tier: 50 calls a month).
+
+
+    Figures are read directly from named IRS filings. The IRS releases e-file data on a 12-24 month lag, so every figure is dated to its fiscal year rather than to today. Funding relationships are reported as association, never as causation. Organizations that do not e-file may be absent.'
+  version: 1.0.0
+  contact:
+    name: Plinth
+    url: https://data.useplinth.com/developers
+  license:
+    name: 'Source data: IRS public domain'
+    url: https://www.irs.gov/charities-non-profits/tax-exempt-organization-search-bulk-data-downloads
+  termsOfService: https://www.useplinth.com/terms
+servers:
+- url: https://data.useplinth.com
+  description: Plinth US philanthropy data
+security:
+- ApiKeyAuth: []
+tags:
+- name: Resolve
+  description: Turn an organization name into an EIN and a canonical URL. No key required.
+paths:
+  /api/search:
+    get:
+      tags:
+      - Resolve
+      operationId: searchOrganizations
+      summary: Resolve an organization name to an EIN and canonical URL
+      description: Entity resolution — the step that precedes every other call when you have a name rather than an EIN. Searches every US grantmaking foundation and funded nonprofit. **No API key required and not metered.**
+      security: []
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+          examples:
+          - barancik
+        description: Search text. Fewer than 2 characters returns an empty result set.
+      - name: state
+        in: query
+        schema:
+          type: string
+          examples:
+          - FL
+        description: Narrow to a US state, two-letter code.
+      - name: mode
+        in: query
+        schema:
+          type: string
+          enum:
+          - text
+          - semantic
+          - hybrid
+          default: text
+        description: text is keyword matching; semantic/hybrid add vector matching and fall back to text if unavailable.
+      responses:
+        '200':
+          description: Matching organizations, best first.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mode:
+                    type: string
+                    description: The mode actually served (may differ from the one requested if it degraded).
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ein:
+                          type: string
+                        name:
+                          type: string
+                        type:
+                          type: string
+                          description: 'Human-readable kind: Grantmaking foundation or Nonprofit.'
+                        kind:
+                          type: string
+                          enum:
+                          - foundation
+                          - nonprofit
+                        location:
+                          type:
+                          - string
+                          - 'null'
+                          description: US state, two-letter code.
+                        url:
+                          type: string
+                          format: uri
+                          description: Absolute canonical URL of the organization's page — stable, and citable.
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Free key includes 50 calls a month; higher volume on a paid plan. Get one at https://data.useplinth.com/pricing.
+externalDocs:
+  description: Developer documentation
+  url: https://data.useplinth.com/developers

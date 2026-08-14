@@ -1,0 +1,138 @@
+generated: '2026-08-14'
+method: searched
+source: https://data.useplinth.com/developers#access
+corroboration:
+  - https://data.useplinth.com/developers#auth          # the header pair, quoted verbatim
+  - https://data.useplinth.com/.well-known/api-onboarding   # economics.freeTier / rateLimitsUrl
+  - https://data.useplinth.com/developers/schema        # the two SQL ceilings
+  - https://data.useplinth.com/pricing
+checked: '2026-08-14'
+confidence: high
+confidence_note: >-
+  The docs host is server-rendered and was captured verbatim by curl (90KB of real HTML, not an SPA
+  shell), so every number below is quoted from the provider's own page rather than inferred. The
+  headers were NOT observed on a live response because the only unauthenticated operation
+  (GET /api/search) is explicitly unmetered and returns none — see observed_headers below.
+
+summary: >-
+  Plinth meters by MONTHLY CALL ALLOWANCE, not by requests per second. There is no published
+  per-second or per-minute throttle anywhere: the constraint is 50 calls a month on a free key and
+  10,000 on the paid tier, with three separately-metered surfaces. Exhaustion answers 402, not 429,
+  and there is no Retry-After — a spent allowance is not a backoff condition, it is a wall until
+  the next billing period.
+
+limit_count: 3
+
+scopes:
+  - scope: per-key (account)
+    surface: REST — /api/grants/* and the organization endpoints (/compliance, /essentials, /premier), plus POST /api/sql
+    window: 1 month
+    limit: 50
+    unit: calls
+    tier: Free ($0)
+    burst: null
+    status_on_exhaustion: 402
+    counted: >-
+      One call per request regardless of page size — "Every /grants/* and org endpoint counts one
+      call, whatever the page size." A cache hit still counts: "a repeat call is a repeat call
+      against your allowance even when we serve it from memory." One SQL query costs one call.
+    headers:
+      - name: X-Calls-Limit
+        meaning: The account's monthly call allowance.
+        observed_value_in_docs: 50
+      - name: X-Calls-Remaining
+        meaning: Calls still available in the current month.
+        observed_value_in_docs: 37
+    header_evidence: >-
+      Quoted verbatim from /developers#auth — "Every response carries your remaining allowance, so
+      you can back off before you hit the wall:" followed by the literal pair
+      `X-Calls-Limit: 50` / `X-Calls-Remaining: 37`.
+    retry_after: null
+    retry_after_note: >-
+      No Retry-After header is documented and 429 is never used. The correct client behaviour is
+      PRE-emptive, not reactive: read X-Calls-Remaining on every response and stop before it hits
+      zero. Once 402 arrives, retrying is futile until the month rolls over or the plan changes.
+    source: https://data.useplinth.com/developers#access
+
+  - scope: per-key (account)
+    surface: REST — same endpoints, paid tier
+    window: 1 month
+    limit: 10000
+    unit: calls
+    tier: For consultants ($250/mo)
+    burst: null
+    status_on_exhaustion: 402
+    note: >-
+      "the For consultants plan raises it to 10,000 a month, which is the tier for anything that
+      syncs, backfills or runs on a schedule. Need more than that, or a bulk extract? Talk to us."
+      The For non-profits ($75/mo) tier is described only as "Generous monthly usage" with no
+      number — the API allowance published for it on the onboarding descriptor is still 50/month,
+      so $75 buys AI analysis, not API volume.
+    source: https://data.useplinth.com/pricing
+
+  - scope: per-visitor
+    surface: Plain-English analysis (POST /api/analyze, and the Ask-the-data chat)
+    window: 1 day
+    limit: 3
+    unit: questions
+    tier: anonymous / free
+    status_on_exhaustion: 402
+    counted: >-
+      Metered SEPARATELY from the REST allowance — "running out of one doesn't touch the other."
+      Paid tiers remove the daily limit ("Full AI analysis — no daily limit" on For non-profits).
+    headers: []
+    header_note: No allowance headers are documented for this meter.
+    source: https://data.useplinth.com/developers#access
+
+unmetered:
+  - operation: searchOrganizations
+    path: GET /api/search
+    note: >-
+      "No API key, no allowance — it is the same endpoint the search box on this site uses." The
+      OpenAPI confirms it with a per-operation `security: []`. Entity resolution is free and
+      uncapped, which makes the name->EIN step of any workflow cost nothing.
+
+resource_ceilings:
+  note: >-
+    Not rate limits, but the other numeric bounds an agent must respect. The first two apply to
+    POST /api/sql and are documented at https://data.useplinth.com/developers/schema.
+  ceilings:
+    - name: SQL result rows
+      limit: 2000
+      signal: '`truncated: true` inside a 200 response'
+      guidance: >-
+        "the fix is to aggregate in SQL rather than page through." An agent that ignores
+        `truncated` will silently compute an aggregate over a truncated set.
+    - name: SQL execution time
+      limit_seconds: 30
+      status_on_breach: 400
+      guidance: >-
+        "A cancelled query returns 400 — narrow it with a tax_year or funder_ein filter." The row
+        cap bounds what comes back; this bounds the scan behind it.
+    - name: page size
+      limit: 1000
+      surface: '`limit` on the /grants/* list endpoints'
+      guidance: Documented on /developers; not expressed as a schema maximum in the spec.
+
+observed_headers:
+  probed:
+    - url: https://data.useplinth.com/api/search?q=barancik
+      status: 200
+      rate_limit_headers_present: false
+      checked: '2026-08-14'
+      note: >-
+        Expected — this operation is unmetered, so it carries no allowance headers. Response headers
+        were: cache-control, age, content-type, date, link (api-catalog/service-desc/service-doc),
+        server: Vercel, strict-transport-security, x-matched-path, x-vercel-cache, x-vercel-id. The
+        X-Calls-* pair could not be observed without a key and is recorded from the docs.
+
+status_codes:
+  on_exhaustion: 402
+  on_unauthorized: 401
+  on_plan_gated_table: 403
+  never_used: 429
+  note: >-
+    The absence of 429 is a real design choice, not an omission: there is no per-second throttle to
+    exceed. Note for x402-aware clients — Plinth's 402 is classical HTTP Payment Required with no
+    payment challenge attached, and must not be read as a machine-payable invoice.
+  see: errors/plinth-us-grants-data-problem-types.yml

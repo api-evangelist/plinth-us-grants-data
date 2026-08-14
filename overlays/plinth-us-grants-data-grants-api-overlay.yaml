@@ -1,0 +1,228 @@
+overlay: 1.0.0
+info:
+  title: API Evangelist enhancements — Plinth Grants API
+  version: 1.0.0
+  x-generated: '2026-08-14'
+  x-method: derived
+  x-source: >-
+    Derived from openapi/plinth-us-grants-data-openapi.json (OpenAPI 3.1.0, 10 operations) plus the
+    provider's own published documentation: https://data.useplinth.com/developers,
+    /developers/schema, /developers#access, /developers#auth and /.well-known/api-onboarding. Every
+    value added below is quoted or paraphrased from a Plinth-published surface — nothing is
+    invented. The base spec is never mutated.
+  x-extends: openapi/plinth-us-grants-data-openapi.json
+  x-rationale: >-
+    Plinth's spec is generated from its own route signatures and passes its own published Spectral
+    ruleset, which makes it accurate but thin in three specific places: (1) every 200 is declared
+    `schema: {}`, so no response entity is modelled; (2) every query parameter is typed
+    `anyOf [string, null]`, so integers read as strings and enums carry no enum; (3) two real error
+    statuses on the SQL surface (400 and 403) are documented in prose but absent from the contract.
+    This overlay records the facts that would close those gaps, sourced from the docs, so a
+    consumer can apply them locally. It is an ANNOTATION of what Plinth already publishes, not a
+    redesign, and the right long-term fix is upstream — because the spec is route-generated, adding
+    response models and parameter types to the routes would produce these automatically.
+
+extends: openapi/plinth-us-grants-data-openapi.json
+
+actions:
+  # ── Discovery / runtime affordances the spec does not carry ──────────────────────────────
+  - target: $.info
+    description: >-
+      Record the machine-discovery surface and the runtime signalling that Plinth serves but the
+      spec does not mention.
+    update:
+      x-machine-discovery:
+        apis_json: https://data.useplinth.com/.well-known/apis.json
+        apis_json_version: '0.19'
+        api_catalog: https://data.useplinth.com/.well-known/api-catalog
+        api_catalog_spec: RFC 9727
+        security_txt: https://data.useplinth.com/.well-known/security.txt
+        onboarding_descriptor: https://data.useplinth.com/.well-known/api-onboarding
+        llms_txt: https://data.useplinth.com/llms.txt
+        spectral_ruleset: https://data.useplinth.com/spectral/grants-api.yaml
+        mcp_endpoint: https://data.useplinth.com/api/connector/mcp
+      x-response-headers:
+        link: >-
+          Every /api response carries `link: </.well-known/api-catalog>; rel="api-catalog",
+          </openapi.json>; rel="service-desc"; type="application/json", </developers>;
+          rel="service-doc"; type="text/html"` — observed live 2026-08-14 on GET /api/search and on
+          the MCP endpoint's 401.
+        x-calls-limit: The account's monthly call allowance (keyed responses only).
+        x-calls-remaining: Calls still available this month (keyed responses only).
+      x-metering:
+        model: monthly-call-allowance
+        free_tier_calls_per_month: 50
+        paid_tier_calls_per_month: 10000
+        status_on_exhaustion: 402
+        never_returns: 429
+        cache_hits_are_billed: true
+        note: >-
+          "a repeat call is a repeat call against your allowance even when we serve it from memory"
+          (/developers). One call per request regardless of page size, so a large `limit` is
+          strictly cheaper than paging.
+      x-data-caveats:
+        source_lag: >-
+          IRS e-file data is released on a 12-24 month lag; every figure is dated to its fiscal year
+          rather than to today.
+        refresh_cadence: monthly
+        causation: Funding relationships are reported as association, never as causation.
+        cause_coverage: >-
+          Only grants with a matched recipient_ein carry an NTEE, so any by-cause dollar total
+          covers ~67% of grant dollars.
+        methodology: https://data.useplinth.com/methodology
+
+  # ── Global response envelope, which the spec does not model at all ───────────────────────
+  - target: $.components
+    description: >-
+      Add the success envelope Plinth documents on /developers ("Response shape") and returns on
+      every list operation. The spec models three error schemas and no success shape.
+    update:
+      x-response-envelope:
+        documented_at: https://data.useplinth.com/developers
+        list_shape: '{ "code": 200, "message": "Request was processed successfully!", "hits": integer, "page": integer, "limit": integer, "results": [ ... ] }'
+        summary_shape: '{ "summary": { ... }, "by_year": [ ... ] }'
+        hits_semantics: total matching the filter, not the page size
+        note: >-
+          `code` mirrors the HTTP status inside the body on both success and failure, so a client
+          can branch on the body alone.
+
+  # ── Parameter typing: documented semantics the anyOf[string,null] shape loses ─────────────
+  - target: $.paths['/api/grants/transactions'].get.parameters[?(@.name=='year')]
+    description: Record the documented semantics of `year`, typed as a nullable string in the spec.
+    update:
+      x-semantic-type: integer
+      x-example: '2023'
+      x-documented-meaning: Filing fiscal year.
+      x-source: https://data.useplinth.com/developers
+
+  - target: $.paths['/api/grants/transactions'].get.parameters[?(@.name=='limit')]
+    description: Record the documented page-size ceiling, which the spec does not express.
+    update:
+      x-semantic-type: integer
+      x-documented-maximum: 1000
+      x-cost-note: >-
+        One call is billed per request regardless of page size, so requesting the maximum is
+        strictly cheaper than paging.
+      x-source: https://data.useplinth.com/developers
+
+  - target: $.paths['/api/grants/transactions'].get.parameters[?(@.name=='sort_by')]
+    description: Record the documented value set, which the spec types as a bare nullable string.
+    update:
+      x-documented-enum: [amount, year]
+      x-source: https://data.useplinth.com/developers
+
+  - target: $.paths['/api/grants/transactions'].get.parameters[?(@.name=='sort_order')]
+    description: Record the documented value set.
+    update:
+      x-documented-enum: [asc, desc]
+      x-source: https://data.useplinth.com/developers
+
+  - target: $.paths['/api/grants/transactions'].get.parameters[?(@.name=='location')]
+    description: Record that `location` filters on the RECIPIENT's US state, not the funder's.
+    update:
+      x-documented-meaning: Recipient US state, two-letter (e.g. MA).
+      x-source: https://data.useplinth.com/developers
+
+  - target: $.paths['/api/search'].get.parameters[?(@.name=='mode')]
+    description: >-
+      Record the value set and the silent-downgrade behaviour, both of which live only in the
+      parameter description prose.
+    update:
+      x-documented-enum: [text, semantic, hybrid]
+      x-default: text
+      x-downgrade-behaviour: >-
+        semantic/hybrid fall back to text if vector matching is unavailable. The response echoes
+        `mode` with the mode actually used — verified live 2026-08-14, a request with no mode
+        returned {"mode":"text",...}. A client that needs semantic matching must check it.
+      x-source: openapi parameter description + live probe
+
+  # ── The unmetered front door, worth flagging to any generated client ─────────────────────
+  - target: $.paths['/api/search'].get
+    description: >-
+      Flag the one operation that needs no credential. This is the intended first call and it is
+      free — the highest-value fact in the whole surface for an agent.
+    update:
+      x-no-auth-required: true
+      x-metered: false
+      x-agent-note: >-
+        Entity resolution is open. Resolve a name to an EIN and a canonical page URL with no key and
+        no allowance cost, then spend allowance only on the enriched calls. Plinth's own onboarding
+        descriptor calls this "the intended first call."
+      x-returns:
+        observed_fields: [ein, name, kind, slug, state, cause, href, revenue, score, url, location, type]
+        observed_at: '2026-08-14'
+        note: >-
+          Observed on a live 200 for q=barancik; the spec declares `schema: {}`. `url` is the
+          canonical citable HTML page for the organization.
+
+  # ── SQL surface: two real error statuses and two ceilings absent from the contract ───────
+  - target: $.paths['/api/sql'].post
+    description: >-
+      Add the documented ceilings and the two error statuses that appear on
+      https://data.useplinth.com/developers/schema but not in the spec. Plinth's own Spectral rule
+      `plinth-metered-errors-documented` requires 401 and 402 on keyed operations; it does not reach
+      400 or 403, which is why these are missing.
+    update:
+      x-undeclared-responses:
+        '400':
+          meaning: Query cancelled after exceeding the 30-second execution ceiling.
+          remediation: Narrow with a tax_year or funder_ein filter, or aggregate in SQL.
+          source: https://data.useplinth.com/developers/schema
+        '403':
+          meaning: >-
+            The query named a warehouse table the account's plan does not include. Returned "rather
+            than a partial answer."
+          gated_tables: [org_asset_profile, foundation_holdings, holding_entity, people, board_link, org_families, gov_funding_federal, gov_funding_state, uk_charity_trustee, uk_board_edge]
+          remediation: Remove the gated table, or upgrade to the For consultants plan.
+          source: https://data.useplinth.com/developers/schema
+      x-ceilings:
+        max_rows: 2000
+        truncation_signal: '`truncated: true` inside a 200 response body'
+        truncation_warning: >-
+          An agent that ignores `truncated` will silently report an aggregate computed over a
+          truncated set.
+        timeout_seconds: 30
+      x-accepted-sql: single SELECT, or WITH ... SELECT
+      x-rejected-sql: multiple statements, any DDL/DML, and the file-reading functions (read_parquet, read_csv)
+      x-plan-gate: paid keys only — there is no free SQL tier
+      x-schema-reference: https://data.useplinth.com/developers/schema
+      x-warehouse-tables: 31
+
+  # ── The SSE surface, undeclared in the contract ──────────────────────────────────────────
+  - target: $.paths['/api/analyze'].post
+    description: >-
+      Record the transport and the separate meter. The operation declares application/json for its
+      200 and no requestBody at all, so a client reading only the spec cannot learn either.
+    update:
+      x-actual-response-transport: text/event-stream (Server-Sent Events)
+      x-transport-evidence: '"streams the answer back as Server-Sent Events" — the operation''s own description'
+      x-requestbody-undeclared: >-
+        No requestBody is declared. The request shape is not published anywhere machine-readable;
+        the surface is documented only as the "Ask the data" chat.
+      x-separate-meter:
+        window: 1 day
+        limit: 3
+        unit: questions
+        scope: per visitor, anonymous
+        note: >-
+          Metered separately from the REST call allowance — "running out of one doesn't touch the
+          other." Paid tiers remove the daily limit.
+      x-source: https://data.useplinth.com/developers#access
+
+  # ── Idempotency / retry semantics, structural rather than contractual ────────────────────
+  - target: $.paths
+    description: >-
+      Record the read-only guarantee. No Idempotency-Key header exists because there is nothing to
+      make idempotent, but the guarantee itself is worth carrying in the contract.
+    update:
+      x-read-only-api:
+        write_operations: 0
+        evidence: >-
+          "We only read the API surface with it — there is no write path to the data."
+          (/developers#governance). Eight of ten operations are GET; runSql and askQuestion are POST
+          only because they carry a body, and SQL rejects all DDL/DML.
+        retry_safety: >-
+          Every operation is naturally idempotent — a retry cannot corrupt state. It CAN spend
+          allowance twice, since cache hits are billed. Retry safety here is a cost question, not a
+          data-integrity question.
+        idempotency_key_header: null

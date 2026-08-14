@@ -1,0 +1,160 @@
+generated: '2026-08-14'
+method: searched
+format: json-envelope
+source: >-
+  Derived from the 4xx responses declared in openapi/plinth-us-grants-data-openapi.json (OpenAPI
+  3.1.0, 10 operations), then enriched from the provider's own error documentation at
+  https://data.useplinth.com/developers#auth, #access and the warehouse-schema page
+  https://data.useplinth.com/developers/schema.
+checked: '2026-08-14'
+rfc9457: false
+
+envelope:
+  media_type: application/json
+  schema: ApiError
+  shape: '{ "code": integer, "message": string }'
+  required: [code, message]
+  spec_description: >-
+    "Every failure answers with this envelope; `message` is safe to show a user." — verbatim from
+    components.schemas.ApiError.description.
+  note: >-
+    The success envelope mirrors it: `{ "code": 200, "message": "Request was processed
+    successfully!", "hits": n, "page": n, "limit": n, "results": [...] }`. `code` duplicates the
+    HTTP status in the body, so a client can branch on the body alone. This is NOT RFC 9457 — there
+    is no type/title/detail/instance and no application/problem+json.
+  agent_guidance: >-
+    `message` is the only human-readable field and the provider explicitly warrants it is safe to
+    surface to an end user. There is no machine-stable error code beyond the HTTP status, so an
+    agent MUST branch on status, not on message text.
+
+validation_error_shape:
+  schema: HTTPValidationError
+  item_schema: ValidationError
+  media_type: application/json
+  shape: '{ "detail": [ { "loc": [string|integer, ...], "msg": string, "type": string } ] }'
+  note: >-
+    The standard FastAPI validation envelope, distinct from ApiError. 422 is the ONLY status that
+    uses it. Two shapes for errors in one API is a real inconsistency for a client to handle.
+  fields:
+    - {name: loc, type: array<string|integer>, required: true, description: 'Path to the offending field, e.g. ["query","q"].'}
+    - {name: msg, type: string, required: true, description: Human-readable validation message.}
+    - {name: type, type: string, required: true, description: Machine error type.}
+
+problems:
+  - status: 401
+    name: Unauthorized
+    component: '#/components/responses/Unauthorized'
+    envelope: ApiError
+    meaning: No key was sent, or the key is not recognized.
+    docs_wording: '"401 — No key, or a key we don''t recognize."'
+    declared_on: [listGrants, listFunders, listRecipients, getGrantsSummary, getCompliance, getEssentials, getPremier, runSql, askQuestion]
+    not_declared_on: [searchOrganizations]
+    remediation: >-
+      Send X-API-Key (or Authorization: Bearer). Keys are minted by a signed-in human at
+      https://data.useplinth.com/account and start `plinth_sk_`. There is no programmatic issue
+      endpoint, so an agent cannot self-heal a 401 — it must escalate to its principal.
+    retryable: false
+
+  - status: 402
+    name: Payment Required
+    component: '#/components/responses/PaymentRequired'
+    envelope: ApiError
+    meaning: >-
+      Monthly call allowance spent, OR the account is inactive, OR the request needs a plan the
+      account does not hold. The message says which.
+    docs_wording: '"402 — Monthly allowance spent, or the account is inactive. The message says which."'
+    declared_on: [listGrants, listFunders, listRecipients, getGrantsSummary, getCompliance, getEssentials, getPremier, runSql, askQuestion]
+    sub_cases:
+      - case: allowance exhausted
+        detail: 50 calls/month on a free key; 10,000/month on the For consultants plan.
+      - case: plan gate
+        detail: >-
+          POST /api/sql is paid-only — "there's no free SQL tier". The MCP connector requires the
+          For consultants plan. The onboarding descriptor states plainly: "A request outside the
+          plan answers 402 with a message naming the reason."
+      - case: account inactive
+        detail: Subscription lapsed or account disabled.
+    remediation: >-
+      Read X-Calls-Remaining before the call rather than after the failure. A 402 is NOT transient:
+      retrying the same call the same month fails identically. Back off to the next billing period
+      or upgrade at https://data.useplinth.com/pricing.
+    retryable: false
+    agent_risk: >-
+      THIS IS THE STATUS AN AGENT WILL HIT FIRST. 402 is used for BOTH quota exhaustion and plan
+      gating, so an agent cannot distinguish "wait until next month" from "this endpoint is not
+      sold to you" without parsing free-text `message`. Note also that 402 is the x402 machine-
+      payment status — Plinth uses it in its classical HTTP sense, with no payment challenge
+      attached, so an x402-aware client must not interpret it as an invoice.
+
+  - status: 403
+    name: Forbidden
+    envelope: ApiError
+    meaning: A SQL query named a table the account's plan does not include.
+    source: https://data.useplinth.com/developers/schema
+    docs_wording: >-
+      '"The tables marked For consultants below additionally need the For consultants plan; naming
+      one on a lesser plan returns 403 rather than a partial answer."'
+    declared_in_spec: false
+    spec_gap: >-
+      403 is documented on the warehouse-schema page but is NOT declared on runSql (or anywhere) in
+      the OpenAPI. A generated client will not know this response exists. Worth reporting to the
+      provider — their own Spectral rule `plinth-metered-errors-documented` requires 401 and 402 on
+      keyed operations but does not reach 403.
+    affected_tables: [org_asset_profile, foundation_holdings, holding_entity, people, board_link, org_families, gov_funding_federal, gov_funding_state, uk_charity_trustee, uk_board_edge]
+    remediation: Remove the gated table from the query, or upgrade to the For consultants plan.
+    retryable: false
+
+  - status: 400
+    name: Bad Request (query cancelled)
+    envelope: ApiError
+    meaning: A SQL query exceeded the 30-second execution ceiling and was cancelled.
+    source: https://data.useplinth.com/developers/schema
+    docs_wording: '"A cancelled query returns 400 — narrow it with a tax_year or funder_ein filter."'
+    declared_in_spec: false
+    spec_gap: Not declared on runSql in the OpenAPI.
+    remediation: >-
+      Narrow the scan with a tax_year or funder_ein predicate, or aggregate in SQL. Also rejected
+      with a 4xx: multiple statements, any DDL/DML, and the file-reading functions (read_parquet,
+      read_csv) — "you query named views, not files."
+    retryable: conditionally
+    retry_note: Retrying the same query will time out again; retry only after narrowing it.
+
+  - status: 422
+    name: Validation Error
+    envelope: HTTPValidationError
+    meaning: Request parameters failed validation.
+    declared_on: [listGrants, listFunders, listRecipients, getGrantsSummary, getCompliance, getEssentials, getPremier]
+    not_declared_on: [runSql, askQuestion, searchOrganizations]
+    remediation: Read `detail[].loc` for the offending parameter path.
+    retryable: false
+
+non_error_edge_cases:
+  - condition: SQL result truncation
+    status: 200
+    signal: '`truncated: true` in the response body'
+    source: https://data.useplinth.com/developers/schema
+    note: >-
+      Results are capped at 2,000 rows and the cap is signalled INSIDE a 200, not as an error. An
+      agent that ignores `truncated` will silently report an aggregate computed over a truncated
+      set. The documented fix is to aggregate in SQL rather than page.
+  - condition: search below minimum length
+    status: 200
+    signal: empty results array
+    source: openapi parameter description on searchOrganizations.q
+    note: '"Fewer than 2 characters returns an empty result set." — an empty 200, not a 4xx.'
+  - condition: semantic search unavailable
+    status: 200
+    signal: '`mode` in the response body reports the mode actually used'
+    source: openapi parameter description on searchOrganizations.mode
+    note: >-
+      '"semantic/hybrid add vector matching and fall back to text if unavailable." The response
+      echoes `mode`, so a client can detect the downgrade — verified live: a request without
+      `mode` returned {"mode":"text",...}.'
+
+coverage:
+  statuses_in_spec: [401, 402, 422]
+  statuses_documented_only: [400, 403]
+  total: 5
+  note: >-
+    Two of the five real error statuses are documented in prose but absent from the OpenAPI, both
+    on the SQL surface. Everything else the spec declares is accurate.

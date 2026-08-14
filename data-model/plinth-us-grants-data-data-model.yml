@@ -1,0 +1,254 @@
+generated: '2026-08-14'
+method: searched
+source: https://data.useplinth.com/developers/schema
+corroboration:
+  - openapi/plinth-us-grants-data-openapi.json    # path params, filter vocabulary, tag grouping
+  - https://data.useplinth.com/developers          # response shape, filter semantics
+  - https://data.useplinth.com/glossary
+checked: '2026-08-14'
+summary: >-
+  The OpenAPI itself carries almost no data model — three schemas, all of them error shapes, and
+  every 200 declared as `schema: {}`. The real model is published somewhere else: the warehouse
+  schema page, which documents all 31 DuckDB views reachable through POST /api/sql, column by
+  column, with the join keys and the caveats. This artifact reads the model from THERE and binds it
+  back to the REST surface. Anyone deriving Plinth's entity graph from /openapi.json alone will
+  conclude there isn't one.
+
+notation: >-
+  Two key spaces, and they do not join. US entities are keyed by EIN — a 9-character zero-padded
+  string. UK entities are keyed by registered_charity_number (BIGINT) and denominated in GBP. The
+  provider states plainly of the UK graph: "This is England & Wales only, and it does NOT join to
+  US orgs."
+
+identifiers:
+  - name: EIN
+    space: US
+    type: TEXT(9), zero-padded
+    definition: 'The nine-digit number that uniquely identifies a US organization to the IRS.' # /glossary
+    comparison: Compare as strings; lpad(x,9,'0') if a literal might be short.
+    api_input: Any format accepted on the REST API — "we normalize".
+    resolution: 'GET /api/search (unkeyed) resolves a name to an EIN; in SQL, call find_org(name) — never LIKE.'
+  - name: registered_charity_number
+    space: UK
+    type: BIGINT
+    source: Charity Commission monthly bulk extract (England & Wales)
+  - name: trustee_id
+    space: UK
+    type: identifier, stable across charities
+    note: UK trustee interlocks are found by trustee_id, not by name matching — unlike the US `people` table.
+
+api_entities_note: Entities as the REST surface exposes them. Derived from paths, path parameters and tag grouping.
+api_entities:
+  - name: Organization
+    key: ein
+    projections:
+      - {endpoint: 'GET /api/essentials/{ein}', operationId: getEssentials, returns: 'name, location, NTEE classification, financials summary'}
+      - {endpoint: 'GET /api/premier/{ein}', operationId: getPremier, returns: 'everything in essentials plus full financials and the resolved geographic service footprint'}
+      - {endpoint: 'GET /api/compliance/{ein}', operationId: getCompliance, returns: 'exemption subsection, deductibility, foundation type, NTEE, IRS auto-revocation status, OFAC (Treasury SDN) name screen'}
+    note: >-
+      Three fixed depth projections rather than field selection. An organization is both a potential
+      funder and a potential recipient — the same EIN appears on either side of a grant.
+  - name: Grant
+    key: 'composite (funder_ein, recipient_ein|recipient_raw, tax_year, amount)'
+    endpoint: 'GET /api/grants/transactions'
+    operationId: listGrants
+    fields_documented: 'funder, recipient, amount, fiscal year, cause, purpose text as filed'
+    note: No stable per-grant surrogate id is published. A grant is identified by its tuple, not by an id.
+  - name: FunderRollup
+    endpoint: 'GET /api/grants/funders'
+    operationId: listFunders
+    fields_observed: 'funder_ein, funder_name, total_amount, grant_count, recipient_count, first_fiscal_year, last_fiscal_year'
+    fields_source: The worked example in the Response-shape section of /developers.
+  - name: RecipientRollup
+    endpoint: 'GET /api/grants/recipients'
+    operationId: listRecipients
+    fields_documented: 'dollars received, location, count of distinct funders'
+  - name: GrantsSummary
+    endpoint: 'GET /api/grants/summary'
+    operationId: getGrantsSummary
+    shape: '{ summary, by_year }'
+    fields_documented: 'total dollars, grant count, distinct funders, distinct recipients, year-by-year breakdown'
+  - name: SearchResult
+    endpoint: 'GET /api/search'
+    operationId: searchOrganizations
+    fields_observed: 'ein, name, kind, slug, state, cause, href, revenue, score, url, location, type'
+    fields_source: 'Live response 2026-08-14 for q=barancik. The spec declares an empty schema for this 200.'
+    note: >-
+      `url` is the canonical, citable HTML page for the organization
+      (https://data.useplinth.com/foundation/<slug> or /nonprofit/<slug>). The resolver returns a
+      web address alongside the identifier, which is what makes it useful as an agent's first call.
+
+relationships:
+  - {from: Grant, to: Organization, type: belongs_to, via: funder_ein, cardinality: many_to_one, role: funder}
+  - {from: Grant, to: Organization, type: belongs_to, via: recipient_ein, cardinality: many_to_one, role: recipient, note: 'NULLABLE — foreign grantees carry no EIN; ~33% of grants have no matched recipient_ein.'}
+  - {from: Organization, to: Grant, type: has_many, via: funder_id filter, direction: outbound, note: 'Everything a foundation funded.'}
+  - {from: Organization, to: Grant, type: has_many, via: recip_id filter, direction: inbound, note: 'Every funder behind a nonprofit. Same endpoint, opposite direction — the defining feature of the API.'}
+  - {from: Grant, to: GrantPurpose, type: has_one, via: '(funder_ein, recipient_ein|recipient_raw, tax_year, amount)', note: 'Side table carrying purpose text for the universe tier.'}
+  - {from: Organization, to: FunderKind, type: has_one, via: funder_ein, note: 'Classifies a backer as private_foundation | public_charity | daf_or_passthrough.'}
+  - {from: Organization, to: OrgBMF, type: has_one, via: ein, note: 'IRS Business Master File row; carries ntee_cd, the ONLY source of a cause classification.'}
+  - {from: Organization, to: ServiceArea, type: has_many, via: ein, note: 'Resolved grantmaking footprint (fips, level, confidence).'}
+  - {from: Organization, to: Person, type: has_many, via: ein, note: 'Officers, directors, trustees and key employees from 990 Part VII / 990-PF Part VIII.'}
+  - {from: Organization, to: Organization, type: has_many, via: 'board_link (e1, e2)', through: shared trustee/officer, note: 'The interlock graph. Undirected — query BOTH e1 and e2.'}
+  - {from: Organization, to: OrgFamily, type: belongs_to, via: family_id, note: 'Cluster of related entities under shared governance.'}
+  - {from: Organization, to: FoundationHolding, type: has_many, via: ein, note: 'Itemized 990-PF Part II investment holdings.'}
+  - {from: FoundationHolding, to: HoldingEntity, type: belongs_to, via: canonical_name}
+  - {from: Organization, to: GovFundingFederal, type: has_many, via: ein, note: 'Federal money flowing IN — the flip side of grants, which is philanthropy OUT.'}
+  - {from: Organization, to: GovFundingState, type: has_many, via: ein, note: 'Nine states only (CT, NJ, VT, MD, MA, OR, DE, OK, FL).'}
+  - {from: UKCharity, to: UKCharityFinance, type: has_many, via: registered_charity_number}
+  - {from: UKCharity, to: UKCharityTrustee, type: has_many, via: registered_charity_number}
+  - {from: UKCharity, to: UKCharity, type: has_many, via: 'uk_board_edge (e1, e2)', through: shared trustee}
+
+warehouse:
+  note: >-
+    The 31 DuckDB views reachable through POST /api/sql. Read-only SELECT / WITH ... SELECT only.
+    Tiers marked `pro` require the For consultants plan; naming one on a lesser plan returns 403.
+  reference: https://data.useplinth.com/developers/schema
+  groups:
+    - group: Core
+      tier: paid
+      tables:
+        - {name: grants, grain: one row per grant, rows: ~18M, key_columns: 'funder_ein, recipient_ein, recipient_raw, recipient_city, recipient_state, recipient_zip, recipient_country, amount BIGINT, tax_year, purpose_raw, source_tier'}
+        - {name: grant_purpose, grain: one row per universe grant, key_columns: 'funder_ein, recipient_ein, recipient_raw, recipient_country, tax_year, amount, purpose TEXT'}
+        - {name: orgs, grain: ONE ROW PER ORGANIZATION — most recent 990 filing, rows: ~793k, key_columns: 'ein, name, state, zip5, return_type, tax_year, mission, total_revenue, total_expenses, net_assets, grants_paid, surplus, rev_contributions, rev_program, rev_investment, rev_other, months_liquid'}
+        - {name: funder_kind, grain: one row per funder, key_columns: 'funder_ein, name, return_type, n_grantees, n_grants, total_out, daf_cnt, daf_grants, is_daf, daf_confidence, daf_signal, funder_kind'}
+        - {name: org_bmf, grain: one row per EIN, key_columns: 'ein, name, city, subsection, classification, foundation, deductibility, status, ruling, ntee_cd'}
+        - {name: pub78, key_columns: 'ein, deductibility_codes'}
+        - {name: auto_revocation, key_columns: 'ein, revocation_date, reinstatement_date'}
+        - {name: ofac_sdn, key_columns: 'ent_num, name, program, sdn_type'}
+        - {name: service_area, key_columns: 'ein, fips, level, name, source, confidence'}
+    - group: Asset intelligence
+      tier: pro
+      description: What private foundations hold, from 990-PF Part II schedules.
+      tables:
+        - {name: org_asset_profile, grain: one row per private foundation with itemized holdings, rows: ~78k, key_columns: 'ein, org_name, state, city, return_type, total_assets_fmv, classified_assets_fmv'}
+        - {name: foundation_holdings, grain: one row per (foundation x holding), key_columns: 'ein, canonical_name, fmv, entity_type, asset_class, vehicle'}
+        - {name: holding_entity, grain: one row per distinct holding name, key_columns: 'canonical_name, co_holder_count, fmv, entity_type, asset_class, vehicle, manager'}
+      asset_classes: [public_equity, fixed_income, private_equity, venture, hedge, real_estate, cash, pri, art, crypto, unknown]
+    - group: Governance & board interlocks
+      tier: pro
+      tables:
+        - {name: people, grain: one row per (filing x roster member), key_columns: 'ein, name_full, name_block, title, roles, comp, is_business, return_type, state, tax_year'}
+        - {name: board_link, grain: one row per org-pair sharing >=1 individual trustee/officer, key_columns: 'e1, e2, shared_people, people, same_state, conf'}
+        - {name: org_families, grain: one row per ein, key_columns: 'ein, family_id, family_size, combined_revenue, family_name'}
+    - group: Government funding
+      tier: pro
+      description: Public money flowing TO nonprofits — the flip side of `grants`.
+      tables:
+        - {name: gov_funding_federal, source: USASpending.gov, key_columns: 'ein, fiscal_year (2017-2025), kind (grant|contract), awarding_agency, program, amount DOUBLE, award_count'}
+        - {name: gov_funding_state, coverage: 'CT, NJ, VT, MD, MA, OR, DE, OK, FL only', key_columns: 'ein, state, fiscal_year, agency, program, category, amount, award_count'}
+    - group: UK Charity Commission register
+      tier: paid
+      currency: GBP
+      jurisdiction: England & Wales
+      tables:
+        - {name: uk_charity, grain: one row per charity-entry, rows: 397713, key_columns: 'registered_charity_number, linked_charity_number, charity_name, charity_registration_status'}
+        - {name: uk_charity_finance, grain: one row per charity per financial year, rows: ~1.2M, key_columns: 'registered_charity_number, fin_period_start_date, fin_period_end_date, total_gross_income, total_gross_expenditure'}
+        - {name: uk_charity_area}
+        - {name: uk_charity_classification}
+        - {name: uk_charity_event}
+        - {name: uk_charity_governing_document}
+        - {name: uk_charity_other_name}
+        - {name: uk_charity_policy}
+        - {name: uk_charity_published_report}
+        - {name: uk_charity_return_a}
+        - {name: uk_charity_return_b}
+        - {name: uk_ingest_meta}
+    - group: UK trustees & the charity-pair graph
+      tier: pro
+      tables:
+        - {name: uk_charity_trustee, rows: 921733, key_columns: 'registered_charity_number, trustee_id, trustee_name, trustee_is_chair, individual_or_organisation (P 914748 / O 6985), trustee_date_of_appointment'}
+        - {name: uk_board_edge, rows: 85631, key_columns: 'e1, e2, shared, weight (Newman 1/(k-1)), overlap, tie_kind, structural'}
+
+derived_classification:
+  name: NTEE major group -> cause
+  note: >-
+    There is NO stored cause/subject column on `grants`. A grant's cause is the GRANTEE's NTEE major
+    group, derived by joining recipient_ein -> org_bmf.ntee_cd and mapping the first letter. The
+    `subject` filter on the REST API is this mapping applied server-side.
+  mapping:
+    A: Arts & Culture
+    B: Education
+    C: Environment
+    D: Animals
+    E: Health
+    F: Health
+    G: Health
+    H: Health
+    I: Crime & Legal
+    J: Employment
+    K: Food & Nutrition
+    L: Housing & Shelter
+    M: Public Safety & Disaster
+    N: Recreation & Sports
+    O: Youth Development
+    P: Human Services
+    Q: International
+    R: Civil Rights
+    S: Community Improvement
+    T: Philanthropy
+    U: Science & Tech
+    V: Social Science
+    W: Public Benefit
+    X: Religion
+    Y: Membership Benefit
+    Z: Unclassified
+
+published_caveats_note: >-
+  Plinth publishes the failure modes of its own model alongside the model. These are not
+  disclaimers — each one is a query that runs fine and returns the wrong number, and an agent
+  building on this data must carry them.
+published_caveats:
+  - id: cause-coverage-ceiling
+    caveat: >-
+      Only grants with a matched recipient_ein carry an NTEE, so ANY by-cause dollar total covers
+      ~67% of grant dollars. "say so when you answer a cause/theme question."
+  - id: orgs-is-a-snapshot-not-a-panel
+    caveat: >-
+      `orgs` holds each org's LATEST filing, and tax_year differs across orgs. Filtering
+      `tax_year = (SELECT MAX(tax_year) FROM orgs)` returns only ~70k of ~793k rows — silently
+      dropping ~90% of the sector. Query with no tax_year filter for "all" or "current" nonprofits.
+  - id: country-vs-state-IN
+    caveat: >-
+      recipient_country='IN' is India (FIPS-10-4, NOT ISO-3166); recipient_state='IN' is Indiana.
+      Never substring-match 'india' on recipient_raw — it catches Indiana, American Indian, Indian
+      River and Indian health boards.
+  - id: group-by-recipient
+    caveat: >-
+      GROUP BY coalesce(recipient_ein, recipient_raw), never recipient_raw alone — one org files
+      under many name spellings (American Red Cross, EIN 530196605, appears a dozen ways). Even
+      then a large grantee can be understated where its EIN is missing on some filings.
+  - id: uppercase-names
+    caveat: Org names are stored UPPERCASE and as-filed. LIKE is case-sensitive; use ILIKE, or find_org(name).
+  - id: board-link-confidence
+    caveat: >-
+      board_link.conf encodes whether a shared NAME is really the same human. "Treat conf below ~0.3
+      as a likely name collision, not a real tie."
+  - id: uk-board-edge-filter
+    caveat: >-
+      ALWAYS filter `tie_kind = 'interlock' AND NOT structural`. Unfiltered, the strongest edges are
+      church administration and "the answer will be wrong in a way that sounds authoritative."
+      `structural` has ~86% recall — say "mostly excluded", not "excluded".
+  - id: obligations-not-outlays
+    caveat: >-
+      gov_funding_federal.amount is OBLIGATIONS, may be NEGATIVE (deobligation/clawback), and the
+      most recent fiscal year is partial — "a late-year drop is a floor, not final."
+  - id: daf-vs-institution
+    caveat: >-
+      Join funder_kind and filter `NOT is_daf` to find who REALLY funds an org. "A DAF grant is a
+      donor you can't re-approach as an institution."
+  - id: filing-lag
+    caveat: >-
+      IRS e-file data lags 12-24 months; every figure is dated to a fiscal year, not to today.
+      Organizations that do not e-file may be absent entirely.
+  - id: association-not-causation
+    caveat: 'Funding relationships are reported as association, never as causation.'
+
+spec_gap:
+  note: >-
+    components.schemas contains exactly three entries — HTTPValidationError, ValidationError and
+    ApiError — all error shapes. No response entity is modelled anywhere in the OpenAPI; every 200
+    is `schema: {}`. The model above therefore had to be read from HTML documentation rather than
+    from the contract, which is the single largest gap between what Plinth knows and what Plinth's
+    spec says. Captured as an enhancement in overlays/plinth-us-grants-data-grants-api-overlay.yaml
+    and worth raising with the provider: their spec is generated from route signatures, so response
+    models would come along automatically if the routes declared them.

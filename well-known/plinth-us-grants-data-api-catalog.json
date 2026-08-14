@@ -1,0 +1,46 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://data.useplinth.com/api",
+      "service-desc": [
+        {
+          "href": "https://data.useplinth.com/openapi.json",
+          "type": "application/json",
+          "title": "Plinth Grants API — OpenAPI 3.1"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://data.useplinth.com/developers",
+          "type": "text/html",
+          "title": "Developer documentation"
+        }
+      ],
+      "service-meta": [
+        {
+          "href": "https://data.useplinth.com/.well-known/apis.json",
+          "type": "application/json",
+          "title": "APIs.json index"
+        },
+        {
+          "href": "https://data.useplinth.com/.well-known/api-onboarding",
+          "type": "application/json",
+          "title": "API Onboarding Descriptor"
+        }
+      ],
+      "status": [
+        {
+          "href": "https://data.useplinth.com/developers#access",
+          "type": "text/html",
+          "title": "Access and limits"
+        }
+      ],
+      "author": [
+        {
+          "href": "https://www.useplinth.com",
+          "title": "Plinth"
+        }
+      ]
+    }
+  ]
+}

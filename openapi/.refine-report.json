@@ -1,0 +1,23 @@
+{
+  "provider": "plinth-us-grants-data",
+  "sources": [
+    "plinth-us-grants-data-openapi.json"
+  ],
+  "outputs": [
+    "plinth-us-grants-data-analyze-api-openapi.yml",
+    "plinth-us-grants-data-grants-api-openapi.yml",
+    "plinth-us-grants-data-organizations-api-openapi.yml",
+    "plinth-us-grants-data-resolve-api-openapi.yml",
+    "plinth-us-grants-data-sql-api-openapi.yml"
+  ],
+  "archived": [
+    "archived openapi/plinth-us-grants-data-openapi.json"
+  ],
+  "errors": [],
+  "warnings": [],
+  "notes": [
+    "plinth-us-grants-data-openapi.json: upgraded openapi 3.1.0 -> OpenAPI 3.2.0",
+    "apis.yml register: written (+5 apis, 5 total)"
+  ],
+  "skipped": []
+}

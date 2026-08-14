@@ -1,0 +1,125 @@
+openapi: 3.2.0
+info:
+  title: Plinth Grants SQL API
+  summary: US foundation and nonprofit funding data from public IRS Form 990 and 990-PF filings.
+  description: 'A read API over the US grantmaking universe, read from public IRS Form 990, 990-EZ and 990-PF e-file filings.
+
+
+    The funder-grantee graph traverses in BOTH directions: filter by `funder_id` for everything a foundation funded, or by `recip_id` for every funder behind a nonprofit.
+
+
+    Start with `/api/search` to turn an organization name into an EIN and a canonical page URL — it needs no key. Every other endpoint requires one (free tier: 50 calls a month).
+
+
+    Figures are read directly from named IRS filings. The IRS releases e-file data on a 12-24 month lag, so every figure is dated to its fiscal year rather than to today. Funding relationships are reported as association, never as causation. Organizations that do not e-file may be absent.'
+  version: 1.0.0
+  contact:
+    name: Plinth
+    url: https://data.useplinth.com/developers
+  license:
+    name: 'Source data: IRS public domain'
+    url: https://www.irs.gov/charities-non-profits/tax-exempt-organization-search-bulk-data-downloads
+  termsOfService: https://www.useplinth.com/terms
+servers:
+- url: https://data.useplinth.com
+  description: Plinth US philanthropy data
+security:
+- ApiKeyAuth: []
+tags:
+- name: SQL
+  description: Ad-hoc read-only SQL over the warehouse. Paid keys only.
+paths:
+  /api/sql:
+    post:
+      summary: Run a read-only SQL query over the warehouse
+      description: 'Query the grants warehouse directly when the fixed endpoints can''t express the question.
+
+
+        Accepts ONE read-only statement: `SELECT` or `WITH ... SELECT`. Multiple statements, any DDL/DML, and
+
+        the file-reading functions (`read_parquet`, `read_csv`, …) are rejected — you query named views, not
+
+        files. The view list, every column, and the caveats that decide whether an answer is right are
+
+        documented at https://data.useplinth.com/developers/schema.
+
+
+        Two ceilings, and they bound different things. Results are capped at 2,000 rows
+
+        (`truncated: true` says you hit it) — aggregate in SQL rather than paging. Separately, a query is
+
+        cancelled after 30 seconds: the row cap limits the response, this limits the scan behind
+
+        it. A cancelled query returns 400, so narrow it with a `tax_year` or `funder_ein` filter and retry.
+
+
+        Requires a paid key — there is no free SQL tier — and costs one call from your monthly allowance, the
+
+        same as any other endpoint. Asset-intelligence and governance tables additionally need Pro.'
+      operationId: runSql
+      requestBody:
+        content:
+          application/json:
+            schema:
+              properties:
+                sql:
+                  type: string
+                  description: A single read-only SELECT (or WITH ... SELECT) statement.
+                  example: SELECT funder_ein, sum(amount) AS total, count(*) AS n FROM grants WHERE tax_year = 2023 GROUP BY 1 ORDER BY total DESC LIMIT 10
+              type: object
+              required:
+              - sql
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+      tags:
+      - SQL
+components:
+  responses:
+    PaymentRequired:
+      description: The monthly allowance is spent, the account is inactive, or the endpoint needs a paid plan. The message says which.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 402
+            message: monthly API call allowance spent
+    Unauthorized:
+      description: No API key, or a key we do not recognize.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 401
+            message: missing or invalid API key
+  schemas:
+    ApiError:
+      type: object
+      description: Every failure answers with this envelope; `message` is safe to show a user.
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+      - code
+      - message
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Free key includes 50 calls a month; higher volume on a paid plan. Get one at https://data.useplinth.com/pricing.
+externalDocs:
+  description: Developer documentation
+  url: https://data.useplinth.com/developers

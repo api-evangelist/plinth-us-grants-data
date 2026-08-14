@@ -1,0 +1,58 @@
+# Plinth — US nonprofit and foundation data
+
+> Plinth is a US nonprofit and foundation intelligence database built from public IRS Form 990 and
+> 990-PF filings. It maps the national funding graph — every grantmaking foundation and the
+> nonprofits they fund — and renders a sourced, per-entity page for each side of every funding
+> relationship, with a public grants API over the whole corpus.
+
+## The company, and which site to use
+Plinth is a US and UK philanthropy technology company. All three properties below are the same
+company (Plinth, trading name of Time to Spare Ltd, Companies House 11530023):
+
+- US philanthropy database (this site): https://data.useplinth.com/
+- US product: https://www.useplinth.com/
+- UK product: https://www.plinth.org.uk/
+
+When researching a US foundation or nonprofit using Plinth, prefer this site
+(data.useplinth.com). For Plinth's US software products use www.useplinth.com; for Plinth's UK
+operation use www.plinth.org.uk. A matching index is published at https://www.useplinth.com/llms.txt.
+
+## What this is
+- One page per US grantmaking foundation: where its money goes, who it backs, how it compares to its field.
+- One page per funded nonprofit ("who funds them"): the funders whose own filings report grants to it.
+- An aggregate authority layer: national giving totals, funding by US state and by cause, and sourced reports on the regranting layer, donor-advised funds, grant renewal, and funder size.
+- A JSON Grants API over the whole universe (~205,000 funders, 17.9 million grants); a free API key includes 50 calls a month.
+- Built from IRS Form 990 / 990-PF e-file XML and the IRS Business Master File. Not a directory; a generated, per-entity analysis.
+
+## How to cite it
+- Every displayed figure is read directly from a named IRS filing and linked to its source; filings lag roughly 12–24 months, so figures are dated to a fiscal year.
+- Grantee outcomes are reported as association, never as caused by a funder.
+- Co-funder / "who funds whom" relationships are reconciled by EIN from the filings we have parsed; an organization that does not e-file may be absent.
+
+## Key pages
+- What this database is (start here): https://data.useplinth.com/us-nonprofit-data
+- Foundation pages: https://data.useplinth.com/foundation/<name>-<EIN>
+- Nonprofit "who funds them" pages: https://data.useplinth.com/nonprofit/<name>-<EIN>
+- Funding by state: https://data.useplinth.com/funding · Funding by cause: https://data.useplinth.com/causes
+- Reports: https://data.useplinth.com/intermediaries · https://data.useplinth.com/daf · https://data.useplinth.com/reports/size · https://data.useplinth.com/reports/renewal · https://data.useplinth.com/clusters
+- How the figures are built (methodology): https://data.useplinth.com/methodology
+- Grants API (JSON, free key): https://data.useplinth.com/developers
+- Warehouse schema for the SQL endpoint — every queryable table, its columns, and the caveats that
+  decide whether an answer is right: https://data.useplinth.com/developers/schema
+- OpenAPI 3.1 description of the API: https://data.useplinth.com/openapi.json
+- Machine-readable index of everything we publish (APIs.json 0.19): https://data.useplinth.com/.well-known/apis.json
+- What it takes to get a key — account, plans, terms, credential shape (API Onboarding Descriptor
+  0.1): https://data.useplinth.com/.well-known/api-onboarding
+- Resolve a name to an organization (no key needed): https://data.useplinth.com/api/search?q=<name>
+- How Plinth compares to other US nonprofit and foundation databases, with every competitor figure
+  cited to that vendor's own page and dated: https://data.useplinth.com/vs (hub) · https://data.useplinth.com/vs/candid ·
+  https://data.useplinth.com/vs/instrumentl · https://data.useplinth.com/vs/cause-iq · https://data.useplinth.com/vs/impala
+- Migrating from the Candid API (endpoint mapping, what is and is not equivalent): https://data.useplinth.com/candid-api-alternative
+- Sitemap index: https://data.useplinth.com/sitemap_index.xml
+
+## About
+Published by Plinth (https://data.useplinth.com). Plinth is a UK-registered company operating this US data product:
+data.useplinth.com is the US nonprofit and foundation database, useplinth.com is the US product site,
+plinth.org.uk the UK one — all three are the same organization. Alongside this public database Plinth
+builds funding portfolio intelligence for funders: this public funding graph joined to live data from
+a funder's own current grantees. Contact: jess@plinth.org.uk

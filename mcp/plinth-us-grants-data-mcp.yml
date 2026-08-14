@@ -1,0 +1,105 @@
+generated: '2026-08-14'
+method: searched
+status: published
+source: https://data.useplinth.com/connect
+corroboration:
+  - https://data.useplinth.com/.well-known/apis.json          # declares the MCP connector as its own API entry
+  - https://data.useplinth.com/.well-known/oauth-protected-resource   # names the MCP endpoint as the protected resource
+  - https://data.useplinth.com/.well-known/api-onboarding     # registration.mechanisms[].type == "dcr"
+
+deployment:
+  mode: remote
+  endpoint: https://data.useplinth.com/api/connector/mcp
+  install: null
+  package: null
+  auth: oauth
+  verified: probed
+  probe:
+    method: POST
+    body: '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+    accept: application/json, text/event-stream
+    http_status: 401
+    www_authenticate: >-
+      Bearer error="invalid_token", error_description="No authorization provided",
+      resource_metadata="https://data.useplinth.com/.well-known/oauth-protected-resource"
+    body_returned: '{"error":"invalid_token","error_description":"No authorization provided"}'
+    checked: '2026-08-14'
+    reading: >-
+      A live, correctly-behaving remote MCP server. The 401 is the RFC 9728 challenge, not an
+      outage: it names the protected-resource metadata document, which in turn names the
+      authorization server, which advertises RFC 7591 dynamic client registration. An agent can
+      complete this handshake unaided up to the browser consent step. There is NO stdio package
+      and no npx install path — this is a URL an MCP client POSTs to, and nothing else.
+
+server:
+  name: Plinth
+  transport: streamable-http
+  url: https://data.useplinth.com/api/connector/mcp
+  human_url: https://data.useplinth.com/connect
+  clients_documented:
+    - Claude (claude.ai, desktop, mobile; self-serve on Pro/Max, admin-installed on Team/Enterprise)
+    - ChatGPT
+    - Microsoft 365 Copilot
+  listings: []
+  listings_note: >-
+    Not found in the Claude Connector directory or the ChatGPT Apps directory as of 2026-08-14;
+    installation is by pasting the custom-connector URL, which the /connect page walks through
+    per client.
+
+auth:
+  methods: [oauth2]
+  oauth2:
+    authorization_server: https://data.useplinth.com
+    metadata: well-known/plinth-us-grants-data-oauth-authorization-server.json
+    protected_resource_metadata: well-known/plinth-us-grants-data-oauth-protected-resource.json
+    authorization_endpoint: https://data.useplinth.com/oauth/authorize
+    token_endpoint: https://data.useplinth.com/oauth/token
+    registration_endpoint: https://data.useplinth.com/oauth/register
+    dynamic_client_registration: true          # RFC 7591
+    grant_types: [authorization_code, refresh_token]
+    pkce: S256
+    token_endpoint_auth_methods: [none]        # public client
+    scopes_supported: [plinth:read]
+    see: scopes/plinth-us-grants-data-scopes.yml
+  human_in_the_loop: >-
+    Yes, once. The provider's own onboarding descriptor records maturity "console-only" and lists
+    "No programmatic signup" as a gap: an agent can dynamically register a client and run PKCE, but
+    a human must sign in at /account and hold a plan that includes the connector before consent
+    can succeed.
+  plan_gate:
+    required_plan: For consultants ($250/mo)
+    evidence: >-
+      Both the pricing page ("Plinth × Claude connector" appears only on the For consultants tier)
+      and the onboarding descriptor ("the MCP connector" listed under the $250 plan) agree. The
+      /connect page calls this "Plinth Pro".
+
+tools:
+  discovery: gated
+  discovery_note: >-
+    tools/list requires an OAuth bearer token (401 above), so the machine-readable tool list with
+    real inputSchemas could NOT be captured. The three tools below are read from the provider's own
+    /connect page, which describes each capability in prose. NAMES ARE DESCRIPTIVE, NOT VERBATIM —
+    Plinth does not publish tool identifiers anywhere public, and llms.txt does not list them
+    either. Do not treat these strings as callable tool names; an authenticated tools/list is the
+    only way to get those. Descriptions are quoted from the provider.
+  tool_count: 3
+  tool_count_note: Three capabilities are documented; the live server may expose more.
+  documented:
+    - label: Search organizations
+      category: resolve
+      description: >-
+        "Find any funder or nonprofit across the universe — by name, state, or size."
+      source: https://data.useplinth.com/connect
+    - label: Get a foundation dossier
+      category: profile
+      description: >-
+        "Pull Plinth's analytical summary for one foundation: giving, causes, grantee network,
+        outcomes, look-alikes."
+      source: https://data.useplinth.com/connect
+    - label: Ask a foundation a question
+      category: analysis
+      description: >-
+        "Natural-language Q&A grounded strictly in that foundation's own IRS filings."
+      source: https://data.useplinth.com/connect
+
+crosswalk: mcp/plinth-us-grants-data-tool-crosswalk.yml

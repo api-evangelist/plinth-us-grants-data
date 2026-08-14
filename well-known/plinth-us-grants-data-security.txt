@@ -1,0 +1,8 @@
+Contact: mailto:data@useplinth.com
+Expires: 2027-08-14T17:49:23Z
+Preferred-Languages: en
+Canonical: https://data.useplinth.com/.well-known/security.txt
+Policy: https://data.useplinth.com/developers#governance
+
+# Plinth publishes public IRS filing data. If you find a way to reach account data, another
+# tenant's API key, or the control plane, mail the address above and we will reply.

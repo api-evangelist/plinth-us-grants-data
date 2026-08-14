@@ -1,0 +1,225 @@
+generated: '2026-08-14'
+method: searched
+source: >-
+  https://data.useplinth.com/developers (Authentication, Base URL, Filters, Response shape, Access
+  & limits, Machine discovery, Governance), https://data.useplinth.com/developers/schema, and
+  openapi/plinth-us-grants-data-openapi.json. Response headers observed live on
+  GET https://data.useplinth.com/api/search 2026-08-14.
+checked: '2026-08-14'
+summary: >-
+  Cross-cutting request/response semantics for the Plinth Grants API. A small, deliberately
+  conventional read API: one envelope, page/limit pagination, a shared filter vocabulary across
+  four endpoints, a header pair that reports remaining allowance on every response, and no writes
+  anywhere. Idempotency is not asserted because there is nothing to make idempotent.
+
+authentication:
+  styles: [api_key_header]
+  api_key_header: X-API-Key
+  alternative: 'Authorization: Bearer <key>'
+  anonymous_operations: [searchOrganizations]
+  mcp_surface: oauth2 (PKCE S256) — separate system
+  see: authentication/plinth-us-grants-data-authentication.yml
+
+base_url:
+  url: https://data.useplinth.com/api
+  single_host: true
+  note: >-
+    Everything lives under /api on the same host that serves the docs, the spec and the
+    /.well-known/ documents. No separate api. subdomain, no regional endpoints, no environments.
+    Plinth enforces both of these facts with its own Spectral rules
+    (plinth-servers-are-the-public-origin, plinth-paths-under-api).
+
+pagination:
+  style: page-based
+  params:
+    - {name: page, type: integer-as-string, default: 1}
+    - {name: limit, type: integer-as-string, max: 1000, note: 'Documented ceiling of 1000; not expressed as a schema maximum in the spec.'}
+  response_fields: [hits, page, limit, results]
+  hits_semantics: The total matching the filter, not the page size.
+  applies_to: [listGrants, listFunders, listRecipients]
+  not_applicable: [getGrantsSummary, getCompliance, getEssentials, getPremier, runSql, askQuestion, searchOrganizations]
+  metering_note: >-
+    A page is a call. "Every /grants/* and org endpoint counts one call, whatever the page size" —
+    so a large `limit` is strictly cheaper than paging. With a 50-call free allowance this matters:
+    fetch 1000 rows in one call rather than 10 pages of 100.
+  aggregate_instead: >-
+    getGrantsSummary exists specifically to avoid paging to count — "Cheaper than paging the rows
+    to count them" (spec description). For SQL, the docs are explicit: aggregate in SQL rather than
+    page, because results truncate at 2,000 rows.
+
+sorting:
+  params:
+    - {name: sort_by, values: [amount, year]}
+    - {name: sort_order, values: [asc, desc]}
+  applies_to: [listGrants]
+  note: Documented on /developers as shared across the grants endpoints; declared in the spec only on listGrants.
+
+filtering:
+  shared_vocabulary: true
+  note: >-
+    The four /grants/* endpoints share one filter set, and Plinth deliberately borrowed the field
+    names from incumbent grant-data APIs — "Parameter and field names follow the vocabulary of
+    existing grant data APIs — funder_id, recip_id, year, subject, amount, fiscal_year — so an
+    existing client is close to drop-in: point the base URL here. (One rename: our compliance lookup
+    is /compliance, not charitycheck.)" A migration guide from the Candid API is published at
+    https://data.useplinth.com/candid-api-alternative.
+  filters:
+    - {name: funder_id, meaning: EIN of the grantmaker, normalization: 'any format accepted; normalized server-side'}
+    - {name: recip_id, meaning: EIN of the recipient organization}
+    - {name: year, meaning: filing fiscal year, example: '2023'}
+    - {name: subject, meaning: cause area (NTEE major group)}
+    - {name: location, meaning: recipient US state, two-letter}
+    - {name: min_amt, meaning: minimum grant amount in whole dollars}
+    - {name: max_amt, meaning: maximum grant amount in whole dollars}
+  bidirectional_graph: >-
+    The defining convention of this API: the same endpoint traverses the funding graph in both
+    directions. `funder_id` returns everything a foundation funded; `recip_id` returns every funder
+    behind a nonprofit. Stated in info.description and on every /grants/* operation.
+  typing_gap: >-
+    Every query parameter in the spec is typed `anyOf [string, null]` — including year, min_amt,
+    max_amt, page and limit, which are semantically integers, and sort_by/sort_order, which are
+    semantically enums. A generated client will therefore expose stringly-typed arguments with no
+    enum validation, and an agent gets no machine-readable hint that `mode` accepts only
+    text|semantic|hybrid (that is in the description text only). This is the clearest contract-
+    quality gap in an otherwise well-governed spec; captured as an enhancement in
+    overlays/plinth-us-grants-data-grants-api-overlay.yaml.
+
+response_envelope:
+  media_type: application/json
+  success_shape: '{ "code": 200, "message": "Request was processed successfully!", "hits": n, "page": n, "limit": n, "results": [ ... ] }'
+  summary_shape: '{ "summary": {...}, "by_year": [...] }'   # getGrantsSummary
+  error_shape: '{ "code": integer, "message": string }'
+  note: >-
+    `code` mirrors the HTTP status inside the body on both success and failure, so a client can
+    branch on the body alone. Response schemas are NOT modelled — every 200 in the spec is
+    `schema: {}`, so the shapes above come from the docs and from a live call, not from the
+    contract. See the overlay.
+  see: errors/plinth-us-grants-data-problem-types.yml
+
+field_expansion:
+  supported: false
+  note: >-
+    No sparse-fieldset or expansion parameter. Depth is chosen by ENDPOINT instead — essentials
+    (core profile) vs premier (full financials + geographic footprint) vs compliance (IRS status +
+    OFAC screen) are three fixed projections of one organization.
+
+streaming:
+  supported: true
+  operation: askQuestion
+  path: POST /api/analyze
+  transport: Server-Sent Events
+  evidence: '"streams the answer back as Server-Sent Events" — spec description on askQuestion.'
+  contract_gap: >-
+    The operation declares `application/json` for its 200 and no requestBody at all. A client
+    reading only the spec cannot learn the request shape or that the response is an SSE stream.
+  not_an_event_surface: >-
+    This is a streaming response to a synchronous request, not publish/subscribe. No AsyncAPI or
+    Webhooks pointer is emitted on the strength of it.
+
+ad_hoc_query:
+  supported: true
+  operation: runSql
+  path: POST /api/sql
+  language: read-only SQL (DuckDB views)
+  accepted: single SELECT, or WITH ... SELECT
+  rejected: multiple statements, any DDL/DML, file-reading functions (read_parquet, read_csv)
+  row_cap: 2000
+  truncation_signal: '`truncated: true` in a 200 response body'
+  timeout_seconds: 30
+  timeout_status: 400
+  cost: one call from the monthly allowance, same as any other endpoint
+  plan_gate: paid keys only; some tables additionally require the For consultants plan (403)
+  schema_doc: https://data.useplinth.com/developers/schema
+  see: data-model/plinth-us-grants-data-data-model.yml
+
+idempotency:
+  documented: false
+  header: null
+  read_only_api: true
+  notes: >-
+    No Idempotency-Key header is documented and none appears in the spec. The mitigating fact is
+    structural rather than contractual: the API has no write path. Eight of ten operations are GET;
+    the two POSTs (runSql, askQuestion) are POST because they carry a body, and both are read-only
+    by construction — SQL rejects all DDL/DML, and the provider states "We only read the API surface
+    with it — there is no write path to the data" (/developers#governance). Every operation is
+    therefore naturally idempotent, but nothing in the contract SAYS so, and safe replay is not
+    asserted. NO `Idempotency` pointer is emitted for this provider — the agent-readiness
+    idempotency dimension is a genuine structural non-applicability, not a missing pointer.
+  agent_risk: low
+  agent_risk_note: >-
+    A retried request cannot corrupt state. It CAN, however, spend allowance twice: a repeat call
+    is billed even when served from cache ("a repeat call is a repeat call against your allowance
+    even when we serve it from memory"). Retry safety here is a cost question, not a data-integrity
+    question.
+
+caching:
+  server_side: true
+  cache_control_observed: 'public'
+  evidence: >-
+    "Responses are JSON and cached (the underlying data refreshes monthly) — cache on your side
+    too." Live probe of GET /api/search returned `cache-control: public`, `age: 0`,
+    `x-vercel-cache: MISS`.
+  client_guidance: >-
+    Cache aggressively. The underlying corpus changes monthly, and Plinth bills a cache hit as a
+    call. Client-side caching is the single largest lever on cost for this API.
+
+rate_limit_signaling:
+  headers: [X-Calls-Limit, X-Calls-Remaining]
+  status_on_exhaustion: 402
+  note: >-
+    "Every response carries your remaining allowance, so you can back off before you hit the wall."
+    Returned on keyed responses; not present on the unauthenticated /api/search, which is unmetered.
+  see: rate-limits/plinth-us-grants-data-rate-limits.yml
+
+request_tracing:
+  provider_header: false
+  observed_headers:
+    - name: x-vercel-id
+      note: >-
+        Platform-level request identifier from the hosting layer (e.g.
+        iad1::iad1::6t46f-1786736838185-f208fe77c514), observed on every response. NOT a documented
+        support identifier — Plinth does not publish a correlation-ID convention, and support is by
+        email with the EIN and filing, not with a request id.
+
+discovery_headers:
+  link:
+    value: >-
+      </.well-known/api-catalog>; rel="api-catalog", </openapi.json>; rel="service-desc";
+      type="application/json", </developers>; rel="service-doc"; type="text/html"
+    observed_on: every /api response, including 401s from the MCP endpoint
+    note: >-
+      RFC 8631/9727 service-desc and service-doc link relations on the wire. A client that receives
+      any response from this API can discover its OpenAPI without being told where it is. This is
+      genuinely rare and is the strongest single agent-affordance in the surface.
+
+versioning:
+  scheme: unversioned-path
+  see: lifecycle/plinth-us-grants-data-lifecycle.yml
+
+data_conventions:
+  ein_format: 9-character zero-padded string; compare as strings (lpad(x,9,'0') in SQL)
+  ein_input: 'Any format accepted on the API — "we normalize"'
+  org_names: stored UPPERCASE and as-filed; use ILIKE, never LIKE
+  country_codes: FIPS-10-4, NOT ISO-3166 (India='IN', UK='UK', Switzerland='SZ')
+  country_state_collision: >-
+    recipient_country='IN' is India; recipient_state='IN' is Indiana. Called out explicitly by the
+    provider as a query that "runs fine and returns the wrong number".
+  currency: USD (whole dollars, BIGINT) for US data; GBP for the UK Charity Commission tables
+  time_basis: fiscal year of the filing, never "today"
+  causation_rule: >-
+    "Funding relationships are reported as association, never as causation." Stated in the OpenAPI
+    description, llms.txt, /methodology and /developers/schema. Treat it as a contract term on
+    downstream use, not a disclaimer.
+  coverage_ceiling: >-
+    "Only grants with a matched recipient_ein carry an NTEE, so any by-cause dollar total covers
+    ~67% of grant dollars — say so when you answer a cause/theme question." A provider publishing
+    the precision ceiling of its own aggregates is unusual and should be carried into any answer an
+    agent builds from this data.
+
+cross_links:
+  errors: errors/plinth-us-grants-data-problem-types.yml
+  lifecycle: lifecycle/plinth-us-grants-data-lifecycle.yml
+  authentication: authentication/plinth-us-grants-data-authentication.yml
+  rate_limits: rate-limits/plinth-us-grants-data-rate-limits.yml
+  data_model: data-model/plinth-us-grants-data-data-model.yml
+  plans: plans/plinth-us-grants-data-plans-pricing.yml

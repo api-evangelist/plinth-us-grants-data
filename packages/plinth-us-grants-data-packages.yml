@@ -1,0 +1,81 @@
+generated: '2026-08-14'
+method: searched
+source: >-
+  Registry sweeps of npm (registry.npmjs.org search), PyPI, RubyGems, crates.io, NuGet, pkg.go.dev
+  and Maven Central for a first-party Plinth client library, plus the provider's own developer
+  documentation (https://data.useplinth.com/developers), llms.txt, APIs.json 0.19 index and API
+  Onboarding Descriptor. No first-party SDK is published in any registry, and none is referenced
+  from any Plinth-published artifact.
+checked: '2026-08-14'
+summary:
+  first_party_sdk_count: 0
+  third_party_package_count: 0
+  note: >-
+    Plinth publishes NO client library in any public package registry as of 2026-08-14. The
+    provider's integration story is deliberately raw-HTTP: a single curl-shaped REST surface behind
+    an X-API-Key header, plus a hosted MCP connector for agents. The developer page shows curl
+    exclusively; the APIs.json index declares 16 properties on the REST API and not one of them is
+    an SDK, SourceCode or Repository link. Because no official SDK exists, this repo emits NO
+    `SDKs` pointer — the ergonomics sdk_count check must read a genuine zero here.
+  what_stands_in_for_an_sdk: >-
+    The OpenAPI 3.1 description at /openapi.json is generated from the service's own route
+    signatures and is linted against a published Spectral ruleset, so a generated client is the
+    intended path. The provider says so on the developer page: "point a client generator, an HTTP
+    client, or an AI agent at it rather than reading prose."
+
+# --- NAME-COLLISION WARNING — do not "repair" this file by wiring any of these ---
+# "Plinth" is a heavily contested package name. Every registry hit below belongs to a DIFFERENT
+# organization. None of them has any relationship to Plinth / Time to Spare Ltd (useplinth.com,
+# plinth.org.uk), the US philanthropy data company this repo profiles.
+name_collisions_rejected:
+  - registry: pypi
+    name: plinth
+    status: 200
+    owner: FreedomBox / Plinth web interface project
+    reason: Unrelated free-software project.
+  - registry: npm
+    name: '@plinth-dev/*'
+    owner: plinth.run (Backstage scaffolder / Next.js SDK toolkit)
+    reason: Unrelated developer-platform vendor; 12 packages under the scope.
+  - registry: npm
+    name: '@plinth-music/cli'
+    owner: plinth-music
+    reason: Unrelated music sync daemon.
+  - registry: npm
+    name: plinth-web / plinth-web-build / plinth-ui / plinth-ui-kit
+    owner: various individual authors
+    reason: Unrelated UI/component projects.
+  - registry: pypi
+    name: plinth-api | useplinth | plinth-grants
+    status: 404
+    reason: Not published. Checked because they are the names a first-party SDK would take.
+
+github_organization:
+  found: false
+  probed:
+    - url: https://github.com/useplinth
+      status: 200
+      note: >-
+        An organization with the matching slug EXISTS but is empty and unattributed — 0 public
+        repos, no display name, no bio, no blog URL, created 2026-07-18. There is nothing on it
+        that identifies it as Plinth/Time to Spare Ltd beyond the slug matching the domain, and
+        nothing in it for a developer to use. No `GitHubOrganization` pointer is emitted: a slug
+        match alone is not ownership evidence (see all/harmonic-ai/, where github.com/harmonic-ai
+        turned out to belong to an unrelated company), and an empty org is not a developer surface
+        even if it is theirs.
+    - url: https://github.com/plinth-org
+      status: 404
+  note: >-
+    No Plinth source code, SDK, example repository or .proto is published anywhere on GitHub.
+    Re-check on a later round: if useplinth/ gains attributed public repos, wire it then.
+
+postman:
+  found: false
+  probed:
+    - url: https://www.postman.com/_api/ws/proxy (search-all "plinth grants")
+      status: 200
+      result: zero collections, zero workspaces, zero APIs
+  note: No public Postman collection or workspace. No `Postman` pointer emitted.
+
+packages: []
+third_party_packages: []

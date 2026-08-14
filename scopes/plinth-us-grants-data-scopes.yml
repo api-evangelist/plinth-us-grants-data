@@ -1,0 +1,80 @@
+generated: '2026-08-14'
+method: probed
+source: https://data.useplinth.com/.well-known/oauth-authorization-server
+corroboration:
+  - https://data.useplinth.com/.well-known/oauth-protected-resource
+  - https://data.useplinth.com/.well-known/api-onboarding
+docs: https://data.useplinth.com/connect
+checked: '2026-08-14'
+derivation_note: >-
+  derive-oauth-scopes.py found zero oauth2 securitySchemes and wrote nothing — correctly, because
+  the REST OpenAPI declares only the X-API-Key apiKey scheme. The OAuth surface belongs to the MCP
+  connector, not to REST, and is discoverable only from the RFC 8414 metadata document. This file
+  was therefore written from the live metadata rather than from the spec.
+
+summary: >-
+  ONE scope, `plinth:read`, covering the entire MCP connector. There is no scope decomposition —
+  no per-tool, per-dataset or read/write split — because the whole product is read-only. What
+  looks like authorization granularity at Plinth is actually PLAN granularity: the boundary between
+  what an agent may reach is drawn by the subscription tier, enforced at 402/403, not by scopes.
+
+model: single-scope
+authorization_server: https://data.useplinth.com
+protected_resource: https://data.useplinth.com/api/connector/mcp
+scope_count: 1
+
+scopes:
+  - name: plinth:read
+    description: >-
+      Read access to the Plinth grants warehouse through the MCP connector. Advertised in both the
+      RFC 8414 authorization-server metadata (scopes_supported) and the RFC 9728 protected-resource
+      metadata (scopes_supported) — the two agree.
+    grants:
+      - Search organizations (name -> EIN resolution)
+      - Foundation dossiers (giving, causes, grantee network, look-alikes)
+      - Natural-language questions grounded in a foundation's IRS filings
+    write_access: false
+    source: https://data.useplinth.com/.well-known/oauth-authorization-server
+    verbatim: '"scopes_supported":["plinth:read"]'
+
+flow:
+  grant_types: [authorization_code, refresh_token]
+  pkce: S256
+  pkce_required: true
+  client_registration: dynamic (RFC 7591) at https://data.useplinth.com/oauth/register
+  token_endpoint_auth_methods: [none]
+  response_types: [code]
+  bearer_methods: [header]
+  consent: >-
+    Browser sign-in required once. The provider's own onboarding descriptor lists "No programmatic
+    signup" as a gap: dynamic registration and PKCE are fully automatable, but the human consent
+    step and the plan check are not.
+
+authorization_is_plan_shaped:
+  model: product-tiers
+  vocabulary_url: https://data.useplinth.com/pricing
+  provider_wording: >-
+    "Plan-gated rather than scoped. The free tier reads /grants/* and the organization endpoints;
+    POST /api/sql, the people/board and asset tables and the MCP connector require a paid plan. A
+    request outside the plan answers 402 with a message naming the reason."
+    — /.well-known/api-onboarding, scopes.notes
+  effective_boundaries:
+    - boundary: unauthenticated
+      reaches: GET /api/search only (security [] in the spec; unmetered)
+    - boundary: free key
+      reaches: /grants/* and the three organization endpoints, 50 calls/month
+    - boundary: paid key
+      reaches: '+ POST /api/sql, + the people/board and asset warehouse tables'
+    - boundary: For consultants ($250/mo)
+      reaches: '+ the MCP connector (plinth:read), 10,000 calls/month'
+  enforcement: 402 (plan/allowance) and 403 (gated warehouse table named in SQL)
+  see:
+    - errors/plinth-us-grants-data-problem-types.yml
+    - plans/plinth-us-grants-data-plans-pricing.yml
+
+rest_api_scopes:
+  applicable: false
+  note: >-
+    The REST API uses a static API key with no scope surface at all. One key per account, rotatable
+    at /account, prefixed `plinth_sk_`, shown once. See
+    authentication/plinth-us-grants-data-authentication.yml.

@@ -1,0 +1,104 @@
+generated: '2026-08-14'
+method: probed
+source: live probes of /.well-known/ on data.useplinth.com and www.useplinth.com
+summary: >-
+  data.useplinth.com serves SIX real documents under /.well-known/ — an APIs.json 0.19 index, an
+  RFC 9727 api-catalog linkset, an RFC 9116 security.txt, an RFC 8414 OAuth authorization-server
+  metadata document, an RFC 9728 protected-resource metadata document, and a self-described
+  "API Onboarding Descriptor 0.1". Every one parses and every one carries real content, so both the
+  WellKnown and the SecurityTxt pointers are earned. This is one of the most completely
+  instrumented /.well-known/ surfaces in the catalog.
+pointer_basis: >-
+  WellKnown emitted on the strength of six 200s carrying real documents (not SPA shells).
+  SecurityTxt emitted because RFC 9116 is genuinely implemented, with a live Contact, a Policy URL
+  and an unexpired Expires field.
+false_positive_watch: >-
+  data.useplinth.com returns HTTP 404 with a 21,627-byte HTML app shell for /.well-known/ paths it
+  does not serve (agent-card.json, agent.json, openid-configuration, ai-plugin.json). The status
+  code is honest — a 404, not a soft-200 — so those are recorded as clean misses. www.useplinth.com
+  (the marketing site) serves nothing under /.well-known/ at all.
+hosts:
+  - host: https://data.useplinth.com
+    role: API host, docs host and base URL host (single-host provider)
+    documents:
+      - path: /.well-known/apis.json
+        status: 200
+        content_type: application/json
+        file: plinth-us-grants-data-apis.json
+        spec: APIs.json 0.19
+        note: >-
+          Provider-published APIs.json index describing two APIs (the REST Grants API and the MCP
+          connector) with 16 typed properties on the REST entry. Also served at /apis.json (200).
+      - path: /.well-known/api-catalog
+        status: 200
+        content_type: application/linkset+json
+        file: plinth-us-grants-data-api-catalog.json
+        spec: RFC 9727
+        note: >-
+          Linkset anchored on https://data.useplinth.com/api with service-desc (OpenAPI),
+          service-doc, service-meta (apis.json + onboarding descriptor), status and author links.
+          Also advertised as a `link:` response header on every /api response — observed live on
+          GET /api/search and on the 401 from the MCP endpoint.
+      - path: /.well-known/security.txt
+        status: 200
+        content_type: text/plain
+        file: plinth-us-grants-data-security.txt
+        spec: RFC 9116
+        note: >-
+          Contact mailto:data@useplinth.com, Policy https://data.useplinth.com/developers#governance,
+          Expires 2027-08-14 (unexpired), Canonical self-reference present.
+      - path: /.well-known/oauth-authorization-server
+        status: 200
+        content_type: application/json
+        file: plinth-us-grants-data-oauth-authorization-server.json
+        spec: RFC 8414
+        note: >-
+          Issuer https://data.useplinth.com; authorization_code + refresh_token; PKCE S256 required;
+          RFC 7591 dynamic client registration endpoint present; single scope plinth:read.
+          This is the authorization server for the MCP connector, not for the REST API.
+      - path: /.well-known/oauth-protected-resource
+        status: 200
+        content_type: application/json
+        file: plinth-us-grants-data-oauth-protected-resource.json
+        spec: RFC 9728
+        note: >-
+          Names https://data.useplinth.com/api/connector/mcp as the protected resource. The MCP
+          endpoint's own 401 www-authenticate header points back at this document, which is the
+          RFC 9728 discovery loop working correctly.
+      - path: /.well-known/api-onboarding
+        status: 200
+        content_type: application/json
+        file: plinth-us-grants-data-api-onboarding.json
+        spec: 'API Onboarding Descriptor 0.1 (provider-defined, self-versioned aod: 0.1)'
+        note: >-
+          Machine-readable account/plan/credential requirements: maturity "console-only", three
+          registration mechanisms (open, console-only, RFC 7591 dcr), key prefix, rotation policy,
+          plan gates, and a candid `gaps[]` array the provider wrote about its own limitations
+          (no programmatic signup, no key-management API, no sandbox). Not an IETF standard; it is
+          Plinth's own descriptor, linked from apis.json and the api-catalog linkset.
+      - path: /.well-known/openid-configuration
+        status: 404
+        note: OIDC discovery is not implemented; the OAuth surface is RFC 8414 only.
+      - path: /.well-known/agent-card.json
+        status: 404
+        checked: '2026-08-14'
+        note: No A2A agent card. No AgentCard pointer is emitted and no a2a/ artifact was authored.
+      - path: /.well-known/agent.json
+        status: 404
+        checked: '2026-08-14'
+        note: Legacy pre-0.3 A2A path also misses.
+      - path: /.well-known/ai-plugin.json
+        status: 404
+        note: No OpenAI plugin manifest (superseded by the MCP connector).
+  - host: https://www.useplinth.com
+    role: marketing/product site (same company — Plinth, trading name of Time to Spare Ltd)
+    documents:
+      - path: /.well-known/apis.json
+        status: 404
+      - path: /.well-known/security.txt
+        status: 404
+      - path: /.well-known/agent-card.json
+        status: 404
+    note: >-
+      Serves /llms.txt (200) but nothing under /.well-known/. The machine-readable surface lives
+      entirely on data.useplinth.com, which is where the API is.

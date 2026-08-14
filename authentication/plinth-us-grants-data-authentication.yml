@@ -1,0 +1,122 @@
+generated: '2026-08-14'
+method: searched
+source: https://data.useplinth.com/developers#auth
+corroboration:
+  - openapi/plinth-us-grants-data-openapi.json          # components.securitySchemes.ApiKeyAuth
+  - https://data.useplinth.com/.well-known/api-onboarding
+  - https://data.useplinth.com/.well-known/oauth-authorization-server
+derived_baseline: derive-authentication.py (2026-08-14) — upgraded to `searched` with the docs and onboarding descriptor.
+checked: '2026-08-14'
+
+summary:
+  types: [apiKey, oauth2]
+  api_key_in: [header]
+  note: >-
+    TWO independent auth systems on one host, and they do not overlap. The REST API takes a static
+    API key in a header. The MCP connector takes OAuth 2.1 with PKCE and dynamic client
+    registration. A REST key will not authenticate the connector and an OAuth token is not
+    documented for REST. One operation — GET /api/search — is deliberately unauthenticated.
+
+schemes:
+  - name: ApiKeyAuth
+    surface: REST (https://data.useplinth.com/api)
+    type: apiKey
+    in: header
+    parameter: X-API-Key
+    alternative_parameter: Authorization
+    alternative_form: 'Bearer <key>'
+    alternative_evidence: >-
+      "Send your key in an X-API-Key header (or as a Authorization: Bearer token — both work)"
+      (/developers#auth). NOTE: only X-API-Key is declared in the OpenAPI — the Bearer form is
+      documented but not in the contract, so a generated client will only know the header form.
+    token_prefix: plinth_sk_
+    token_prefix_source: >-
+      /developers#auth ("it starts plinth_sk_") and /.well-known/api-onboarding
+      (authentication.methods[0].tokenPrefix).
+    env_var: PLINTH_API_KEY
+    env_var_source: /.well-known/api-onboarding (authentication.methods[0].env)
+    applied: global
+    applied_evidence: 'Root-level `security: [{ApiKeyAuth: []}]` in the OpenAPI, with a per-operation override on searchOrganizations.'
+    issuance:
+      mechanism: console-only
+      url: https://data.useplinth.com/account
+      programmatic: false
+      cost: free tier requires no card
+      sign_in: Google sign-in or an email link
+      one_time_display: true
+      keys_per_account: 1
+      note: >-
+        "The REST key is minted by a signed-in human at /account (one key per account, rotatable,
+        shown once). There is no programmatic issue endpoint." — /.well-known/api-onboarding.
+    rotation:
+      supported: true
+      url: https://data.useplinth.com/account
+      semantics: immediate-revoke
+      note: '"Rotating retires the previous key immediately." No overlap window — plan for a hard cutover.'
+    ttl: none
+    handling_guidance: >-
+      "Keys are secrets — keep them server-side, never in browser JavaScript, a mobile binary or a
+      committed file." (/developers#auth)
+    sources:
+      - https://data.useplinth.com/developers#auth
+      - openapi/plinth-us-grants-data-openapi.json
+
+  - name: ConnectorOAuth
+    surface: MCP (https://data.useplinth.com/api/connector/mcp)
+    type: oauth2
+    profile: OAuth 2.1 (authorization_code + PKCE S256), public client
+    declared_in_openapi: false
+    declared_in_openapi_note: >-
+      The REST OpenAPI does not model this scheme — correctly, since it protects a different
+      surface. It is discoverable only from the RFC 8414 metadata document.
+    metadata: well-known/plinth-us-grants-data-oauth-authorization-server.json
+    protected_resource_metadata: well-known/plinth-us-grants-data-oauth-protected-resource.json
+    issuer: https://data.useplinth.com
+    authorization_endpoint: https://data.useplinth.com/oauth/authorize
+    token_endpoint: https://data.useplinth.com/oauth/token
+    registration_endpoint: https://data.useplinth.com/oauth/register
+    dynamic_client_registration: true
+    grant_types: [authorization_code, refresh_token]
+    pkce: S256
+    token_endpoint_auth_methods: [none]
+    bearer_methods: [header]
+    scopes: [plinth:read]
+    see: scopes/plinth-us-grants-data-scopes.yml
+    token_ttl: short-lived; refresh_token grant supported
+    revocation: 'Remove the connector in the assistant, or revoke from https://data.useplinth.com/account.'
+    challenge_observed:
+      url: https://data.useplinth.com/api/connector/mcp
+      status: 401
+      header: >-
+        www-authenticate: Bearer error="invalid_token", error_description="No authorization
+        provided", resource_metadata="https://data.useplinth.com/.well-known/oauth-protected-resource"
+      checked: '2026-08-14'
+    sources:
+      - https://data.useplinth.com/connect
+      - https://data.useplinth.com/.well-known/oauth-authorization-server
+
+anonymous_surface:
+  operation: searchOrganizations
+  path: GET /api/search
+  security: []
+  metered: false
+  evidence: >-
+    Per-operation `security: []` in the OpenAPI overrides the global requirement, and the spec says
+    so in prose: "**No API key required and not metered.**" Verified live 2026-08-14: GET
+    /api/search?q=barancik returned 200 with a result body and no auth header sent.
+  significance: >-
+    Rare and agent-friendly. Entity resolution — the step that must precede every other call when
+    you have a name rather than an EIN — is free, unkeyed and unmetered. An agent can resolve
+    "Barancik Foundation" to EIN 363442474 and a canonical URL before it needs any credential at
+    all. Plinth's own onboarding descriptor calls this "the intended first call."
+
+agent_readiness_notes:
+  can_an_agent_self_provision: false
+  blocker: >-
+    A human must sign in at /account to mint the REST key, and must hold the For consultants plan
+    before the MCP consent step can succeed. The provider documents both as gaps in its own
+    onboarding descriptor rather than leaving an agent to discover them at a 401.
+  strongest_signal: >-
+    The credential requirements are published as MACHINE-READABLE data, not prose: token prefix,
+    env var name, rotation semantics, one-time display, plan gates and the registration mechanisms
+    all live in /.well-known/api-onboarding. Very few providers in the catalog publish this.

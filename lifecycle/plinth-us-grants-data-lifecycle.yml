@@ -1,0 +1,135 @@
+generated: '2026-08-14'
+method: searched
+source: >-
+  https://data.useplinth.com/developers, /developers#access, /developers#governance,
+  /openapi.json, /.well-known/api-onboarding, /methodology, and 404 probes for a changelog,
+  status page and roadmap.
+checked: '2026-08-14'
+
+versioning:
+  scheme: unversioned-path
+  spec_version: 1.0.0
+  spec_version_source: info.version in https://data.useplinth.com/openapi.json
+  notes: >-
+    No version segment in the path — everything is served under /api on data.useplinth.com. The
+    only version identifier Plinth publishes is info.version 1.0.0 in the OpenAPI. There is no
+    documented version-negotiation header, no dated version pinning, and no statement of what a
+    bump to 1.1.0 or 2.0.0 would mean for a client.
+  drift_control:
+    mechanism: generated-from-routes
+    evidence: >-
+      "The OpenAPI description is generated from the service's own route signatures, so it cannot
+      drift from the API" (/developers#governance), corroborated by the Spectral ruleset header,
+      which names the generator (pipeline/grants_api.py::_public_openapi) and states the spec is
+      asserted in CI (pipeline/eval/openapi_snapshot_test.py).
+    reading: >-
+      This is a genuine and unusual strength — the spec cannot lie about the routes. It is NOT a
+      substitute for a changelog: a generated spec silently reflects a breaking change rather than
+      announcing it.
+
+changelog:
+  published: false
+  probed:
+    - url: https://data.useplinth.com/changelog
+      status: 404
+    - url: https://data.useplinth.com/developers/changelog
+      status: 404
+  note: >-
+    No dated changelog, release-notes page or version history is published anywhere on
+    data.useplinth.com or www.useplinth.com, and none is linked from the APIs.json index (16 typed
+    properties, none of them ChangeLog/Releases/Versioning). No `ChangeLog` pointer is emitted and
+    no changelog/ artifact was authored — an honest absence.
+  consumer_impact: >-
+    With no changelog and no version negotiation, a consumer's only way to detect a change is to
+    diff /openapi.json themselves. The provider has made that easy (the spec is generated and
+    machine-fetchable) without closing the loop.
+
+status_page:
+  published: false
+  probed:
+    - url: https://status.useplinth.com
+      status: dns-nxdomain
+    - url: https://data.useplinth.com/status
+      status: 404
+  documented_alternative:
+    url: https://data.useplinth.com/developers#access
+    what_it_is: >-
+      An "Access and limits" section, advertised as `status` in the RFC 9727 api-catalog linkset.
+      It documents allowances and the 402 boundary — it is NOT an uptime/incident page and reports
+      no component state.
+  note: >-
+    No `StatusPage` pointer is emitted. The api-catalog `status` relation points at a limits
+    document, not an availability surface, and crediting it would be exactly the
+    "venue-listing-as-Website" class of false credit.
+
+sla:
+  published: false
+  note: >-
+    No uptime commitment, support-response target or credit regime is published on the pricing
+    page, the terms, or the developer documentation. The For-foundations tier advertises "bespoke
+    onboarding and support" with no stated targets.
+
+deprecation:
+  policy_documented: false
+  deprecated_operations: []
+  sunset_header: false
+  rfc8594: false
+  evidence: >-
+    No operation in the 10-operation OpenAPI carries `deprecated: true`; no Deprecation or Sunset
+    header is documented; no deprecation, sunset or breaking-change policy page exists.
+  note: No `Deprecation` pointer is emitted.
+
+data_lifecycle:
+  refresh_cadence: monthly
+  evidence: >-
+    "Responses are JSON and cached (the underlying data refreshes monthly)" (/developers);
+    "refreshed monthly, so far fresher than the 990 financial data" (compliance endpoint);
+    "UK rows come from the Charity Commission's monthly bulk extract".
+  source_lag: 12-24 months
+  lag_evidence: >-
+    "The IRS releases e-file data on a 12-24 month lag, so every figure is dated to its fiscal year
+    rather than to today" — info.description in the OpenAPI, repeated in llms.txt, on /developers,
+    on /developers/schema and on /methodology.
+  methodology_url: https://data.useplinth.com/methodology
+  note: >-
+    Worth separating from API lifecycle: the CONTRACT is unversioned and unannounced, but the DATA
+    lifecycle is documented with unusual candour — every figure dated to a fiscal year, the lag
+    stated on five separate surfaces, and coverage ceilings (e.g. "any by-cause dollar total covers
+    ~67% of grant dollars") published rather than buried.
+
+support:
+  channels:
+    - type: email
+      value: data@useplinth.com
+      scope: API support, corrections, access requests, vulnerability reports
+      source: https://data.useplinth.com/developers#governance and /.well-known/security.txt
+    - type: email
+      value: hello@plinth.org.uk
+      scope: General/commercial contact (site footer)
+    - type: form
+      value: https://www.useplinth.com (Book a call)
+      scope: For-foundations tier / sales
+  corrections_policy: >-
+    "Corrections to a figure are welcome and we fix them at the source: mail the address above with
+    the EIN and the filing you are reading." (/developers#governance)
+  load_testing_policy: >-
+    "Please don't run load tests against the API to prove a point — ask and we'll give you a
+    window." (/developers#governance)
+
+roadmap:
+  published: false
+  probed:
+    - url: https://data.useplinth.com/roadmap
+      status: 404
+  note: No public roadmap. No `Roadmap` pointer emitted.
+
+pointers_emitted: [Lifecycle]
+pointers_withheld:
+  - pointer: StatusPage
+    reason: No uptime/incident page exists; the api-catalog `status` link is a limits document.
+  - pointer: Deprecation
+    reason: No deprecation or sunset policy is published and no operation is marked deprecated.
+  - pointer: ChangeLog
+    reason: No dated changelog exists (404 on both candidate paths).
+  - pointer: Roadmap
+    reason: No public roadmap (404).

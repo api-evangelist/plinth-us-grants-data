@@ -1,0 +1,158 @@
+generated: '2026-08-14'
+method: searched
+source: >-
+  Live probes of data.useplinth.com /.well-known/*, the OpenAPI 3.1 at /openapi.json, the published
+  Spectral ruleset at /spectral/grants-api.yaml, the developer documentation at /developers and the
+  API Onboarding Descriptor at /.well-known/api-onboarding.
+checked: '2026-08-14'
+summary: >-
+  Unusually strong standards posture for a small provider: OpenAPI 3.1, APIs.json 0.19, RFC 9727
+  api-catalog (served AND advertised as a Link header), RFC 9116 security.txt, RFC 8414 + RFC 9728
+  + RFC 7591 on the MCP OAuth surface, MCP streamable HTTP, and a PUBLISHED Spectral ruleset the
+  provider invites third parties to run against its own spec. The gaps are real but narrow: no
+  RFC 9457 problem+json, no RFC 8594 deprecation signalling, no OIDC discovery, no AsyncAPI, and
+  no third-party security certification.
+
+standards:
+  - id: openapi-3.1
+    conforms: true
+    evidence: >-
+      https://data.useplinth.com/openapi.json returns a valid OpenAPI 3.1.0 document with 10
+      operations across 5 tags, generated from the service's route signatures (info.description and
+      the Spectral ruleset both state this), so it cannot drift from the implementation.
+
+  - id: apisjson
+    conforms: true
+    version: '0.19'
+    evidence: >-
+      https://data.useplinth.com/.well-known/apis.json (also at /apis.json) — a self-declared
+      APIs.json 0.19 index with two API entries and 16 typed properties on the REST entry.
+      Provider-published, not derived by this pipeline.
+
+  - id: rfc9727-api-catalog
+    conforms: true
+    evidence: >-
+      /.well-known/api-catalog returns application/linkset+json anchored on
+      https://data.useplinth.com/api with service-desc, service-doc, service-meta, status and
+      author relations. Additionally advertised as a `link:` response header on every /api
+      response — verified live on GET /api/search (200) and on the MCP endpoint's 401.
+
+  - id: rfc9116-security-txt
+    conforms: true
+    evidence: >-
+      /.well-known/security.txt (200) with Contact, Expires (2027-08-14, unexpired), Canonical,
+      Preferred-Languages and a Policy URL. See security/plinth-us-grants-data-vulnerability-disclosure.yml.
+
+  - id: rfc8414-authorization-server-metadata
+    conforms: true
+    evidence: >-
+      /.well-known/oauth-authorization-server (200): issuer, authorization/token/registration
+      endpoints, authorization_code + refresh_token, code_challenge_methods_supported [S256].
+
+  - id: rfc9728-protected-resource-metadata
+    conforms: true
+    evidence: >-
+      /.well-known/oauth-protected-resource (200) names the MCP endpoint as the resource, and the
+      endpoint's own 401 returns `www-authenticate: Bearer ... resource_metadata="<that URL>"` —
+      the discovery loop closes correctly.
+
+  - id: rfc7591-dynamic-client-registration
+    conforms: true
+    evidence: >-
+      registration_endpoint https://data.useplinth.com/oauth/register in the RFC 8414 metadata, and
+      the onboarding descriptor documents an explicit "dcr" registration mechanism for agents.
+
+  - id: oauth2-pkce
+    conforms: true
+    evidence: code_challenge_methods_supported [S256]; token_endpoint_auth_methods_supported [none] (public client).
+
+  - id: mcp
+    conforms: true
+    evidence: >-
+      Remote streamable-HTTP MCP server at https://data.useplinth.com/api/connector/mcp. Probed
+      2026-08-14: POST tools/list returns 401 with a well-formed OAuth challenge, i.e. a live
+      server enforcing auth. Documented for Claude, ChatGPT and Microsoft 365 Copilot.
+
+  - id: spectral-governance
+    conforms: true
+    evidence: >-
+      https://data.useplinth.com/spectral/grants-api.yaml — a 10-rule ruleset extending
+      spectral:oas recommended, published so third parties can lint Plinth's own spec against
+      Plinth's own rules. Captured verbatim at rules/plinth-us-grants-data-spectral.yaml. Rules
+      cover server-host correctness, path prefixing, camelCase operationIds, mandatory tagging,
+      mandatory summary+description, mandatory 401/402 on metered operations, the declared+applied
+      security scheme, info completeness (terms/licence/contact), externalDocs, and https-only URLs.
+
+  - id: llmstxt
+    conforms: true
+    evidence: >-
+      https://data.useplinth.com/llms.txt (200, 4,538 bytes) with real content — corpus scope,
+      citation rules, authoritative pages, and a cross-reference to the sibling
+      https://www.useplinth.com/llms.txt. Captured at llms/plinth-us-grants-data-llms.txt.
+
+  - id: rfc9457-problem-details
+    conforms: false
+    evidence: >-
+      Errors are returned as application/json with a flat `{code, message}` envelope
+      (components.schemas.ApiError), not application/problem+json. Zero problem+json media types in
+      the spec. 422 uses the FastAPI HTTPValidationError shape. See
+      errors/plinth-us-grants-data-problem-types.yml.
+
+  - id: rfc8594-sunset-header
+    conforms: false
+    evidence: >-
+      No Deprecation or Sunset header is documented, no deprecation policy page exists, and no
+      operation in the 10-operation spec carries `deprecated: true`. No Deprecation pointer emitted.
+
+  - id: oidc-discovery
+    conforms: false
+    evidence: /.well-known/openid-configuration returns 404. The OAuth surface is RFC 8414 only, which is what MCP requires.
+
+  - id: asyncapi
+    conforms: false
+    evidence: >-
+      No event, webhook or streaming-subscription surface is published. POST /api/analyze streams
+      Server-Sent Events, but that is a streaming RESPONSE to a synchronous request, not a
+      publish/subscribe channel — it is not modellable as AsyncAPI and no AsyncAPI or Webhooks
+      pointer is emitted.
+
+  - id: graphql
+    conforms: false
+    evidence: No /graphql surface on data.useplinth.com; none referenced from apis.json, llms.txt or the docs.
+
+  - id: idempotency
+    conforms: false
+    evidence: >-
+      No Idempotency-Key header is documented or present in the spec. Mitigating: the API is
+      read-only — eight GETs plus two POSTs (runSql, askQuestion) that are POST for body-size
+      reasons and perform no writes ("there is no write path to the data", /developers#governance).
+      Naturally idempotent by construction, but not contractually asserted. No Idempotency pointer
+      emitted. See conventions/plinth-us-grants-data-conventions.yml.
+
+  - id: pagination
+    conforms: true
+    style: page-based
+    evidence: >-
+      `page` and `limit` query parameters on the four /grants/* list operations (limit up to 1000,
+      documented at /developers), with `hits`, `page` and `limit` echoed in the response envelope.
+
+  - id: soc2
+    conforms: unknown
+    evidence: >-
+      No trust center, no certification page, and no SOC 2 / ISO 27001 / HIPAA / PCI / FedRAMP claim
+      anywhere on data.useplinth.com or www.useplinth.com. probe-security-programs.py found no trust
+      center. This is consistent with the product — the corpus is public-domain IRS data and the
+      provider states "there is no write path to the data" — but it means no `Compliance` or
+      `TrustCenter` pointer is earned.
+
+  - id: uk-companies-house-registration
+    conforms: true
+    evidence: >-
+      Corporate identity disclosed in llms.txt: "Plinth, trading name of Time to Spare Ltd,
+      Companies House 11530023". Recorded as identity provenance, not as a security certification.
+
+compliance_pointer_emitted: false
+compliance_pointer_reason: >-
+  No third-party audited certification or published compliance program was found. The standards
+  above are protocol conformance (Conformance), not organizational compliance (Compliance), and
+  conflating the two is exactly the miscredit the rubric warns about.

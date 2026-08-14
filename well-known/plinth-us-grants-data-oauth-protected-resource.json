@@ -1,0 +1,1 @@
+{"resource":"https://data.useplinth.com/api/connector/mcp","authorization_servers":["https://data.useplinth.com"],"scopes_supported":["plinth:read"],"bearer_methods_supported":["header"],"resource_name":"Plinth Grants Intelligence","resource_documentation":"https://data.useplinth.com/account"}

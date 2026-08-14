@@ -1,0 +1,89 @@
+openapi: 3.2.0
+info:
+  title: Plinth Grants Analyze API
+  summary: US foundation and nonprofit funding data from public IRS Form 990 and 990-PF filings.
+  description: 'A read API over the US grantmaking universe, read from public IRS Form 990, 990-EZ and 990-PF e-file filings.
+
+
+    The funder-grantee graph traverses in BOTH directions: filter by `funder_id` for everything a foundation funded, or by `recip_id` for every funder behind a nonprofit.
+
+
+    Start with `/api/search` to turn an organization name into an EIN and a canonical page URL — it needs no key. Every other endpoint requires one (free tier: 50 calls a month).
+
+
+    Figures are read directly from named IRS filings. The IRS releases e-file data on a 12-24 month lag, so every figure is dated to its fiscal year rather than to today. Funding relationships are reported as association, never as causation. Organizations that do not e-file may be absent.'
+  version: 1.0.0
+  contact:
+    name: Plinth
+    url: https://data.useplinth.com/developers
+  license:
+    name: 'Source data: IRS public domain'
+    url: https://www.irs.gov/charities-non-profits/tax-exempt-organization-search-bulk-data-downloads
+  termsOfService: https://www.useplinth.com/terms
+servers:
+- url: https://data.useplinth.com
+  description: Plinth US philanthropy data
+security:
+- ApiKeyAuth: []
+tags:
+- name: Analyze
+  description: Plain-English questions answered with SQL the service writes itself.
+paths:
+  /api/analyze:
+    post:
+      summary: Analyze
+      operationId: askQuestion
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+      description: 'Ask a question about the corpus in plain English; the service writes and runs its own SQL and streams the answer back as Server-Sent Events. Metered separately from the REST endpoints: three free questions per visitor per day, then a paid key.'
+      tags:
+      - Analyze
+components:
+  responses:
+    PaymentRequired:
+      description: The monthly allowance is spent, the account is inactive, or the endpoint needs a paid plan. The message says which.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 402
+            message: monthly API call allowance spent
+    Unauthorized:
+      description: No API key, or a key we do not recognize.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 401
+            message: missing or invalid API key
+  schemas:
+    ApiError:
+      type: object
+      description: Every failure answers with this envelope; `message` is safe to show a user.
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+      - code
+      - message
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Free key includes 50 calls a month; higher volume on a paid plan. Get one at https://data.useplinth.com/pricing.
+externalDocs:
+  description: Developer documentation
+  url: https://data.useplinth.com/developers

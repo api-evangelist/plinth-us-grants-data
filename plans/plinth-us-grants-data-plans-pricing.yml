@@ -1,0 +1,152 @@
+generated: '2026-08-14'
+method: searched
+source: https://data.useplinth.com/pricing
+corroboration:
+  - https://data.useplinth.com/.well-known/api-onboarding   # account.plans[] — machine-readable
+  - https://data.useplinth.com/developers#access
+checked: '2026-08-14'
+summary: >-
+  Four tiers, three of them with published prices in USD per month and a self-serve subscribe path.
+  The API allowance moves at only ONE of the paid steps: Free and For non-profits both get 50 REST
+  calls a month, and only For consultants ($250) raises it to 10,000 and unlocks POST /api/sql, the
+  people/board and asset tables, and the MCP connector. The middle tier buys AI analysis, not API
+  volume — worth stating plainly, because a developer reading "For non-profits $75/mo" would
+  reasonably expect more calls and gets none.
+plan_count: 4
+prices_published: true
+currency: USD
+billing_period: monthly
+public_signup: true
+signup_url: https://data.useplinth.com/account
+card_required_for_free_tier: false
+machine_readable_pricing: partial
+machine_readable_note: >-
+  Plans are published as structured data in /.well-known/api-onboarding (account.plans[] with name,
+  requiredFor and url) — rarer than a pricing page and directly consumable by an agent. Prices
+  appear in the plan NAME string there ("For non-profits ($75/month)"), not as a typed amount, so a
+  machine still has to parse. There is no pricing/catalog API endpoint.
+
+plans:
+  - name: Free
+    price: 0
+    currency: USD
+    billing_period: monthly
+    cta: Start now
+    signup: self-serve, no card
+    included_quota:
+      rest_calls_per_month: 50
+      ai_questions_per_day: 3
+      entity_resolution: unmetered
+    overage: none
+    limits:
+      sql_endpoint: false
+      mcp_connector: false
+      people_board_tables: false
+      asset_tables: false
+      gov_funding_tables: false
+    features:
+      - The full Grants API — 17.9M grants, 205k funders
+      - 50 API calls a month on a free key
+      - Search every funder and nonprofit (unkeyed and unmetered)
+      - 3 free AI questions a day
+    note: >-
+      Plinth's own onboarding descriptor is candid that this is the trial: "No sandbox environment:
+      the free tier IS the trial, against live data."
+
+  - name: For non-profits
+    price: 75
+    currency: USD
+    billing_period: monthly
+    cta: Subscribe
+    included_quota:
+      rest_calls_per_month: 50
+      ai_questions_per_day: unlimited
+    overage: null
+    limits:
+      sql_endpoint: false
+      mcp_connector: false
+    features:
+      - Everything in Free
+      - Full AI analysis — no daily limit
+      - Charts + the SQL behind every figure
+      - Generous monthly usage
+    api_note: >-
+      The pricing page says "Generous monthly usage" without a number; the onboarding descriptor
+      pins it: "50 REST calls a month, plus unlimited plain-English analysis." So the REST allowance
+      is UNCHANGED from Free at this tier. The two sources do not contradict each other, but the
+      pricing page is vaguer than the descriptor — the descriptor is the one to trust.
+
+  - name: For consultants
+    price: 250
+    currency: USD
+    billing_period: monthly
+    cta: Subscribe
+    included_quota:
+      rest_calls_per_month: 10000
+      ai_questions_per_day: 'highest monthly AI usage'
+    overage: null
+    overage_note: No overage rate is published; exceeding the allowance answers 402 rather than billing.
+    limits:
+      sql_endpoint: true
+      mcp_connector: true
+      people_board_tables: true
+      asset_tables: true
+      gov_funding_tables: true
+    features:
+      - Everything in For non-profits
+      - The highest monthly AI usage
+      - People & board tracking — officers, trustees, interlocks
+      - Asset & investment tracking — holdings, managers, allocation
+      - 10,000 API calls a month — bulk access to the whole dataset
+      - Plinth × Claude connector
+    developer_note: >-
+      THIS is the developer tier. It is the only plan that unlocks POST /api/sql, the ten gated
+      warehouse tables (403 otherwise), and the remote MCP server. Any agent integration lands here.
+
+  - name: For foundations
+    price: null
+    currency: null
+    billing_period: null
+    cta: Contact us
+    self_serve: false
+    included_quota:
+      rest_calls_per_month: 'unlimited / custom'
+    limits: {}
+    features:
+      - Everything in For consultants
+      - Unlimited / custom API volume
+      - Portfolio insights tool wired into your grantmaking
+      - Look-alike prospecting across every US funder
+      - Board, people & asset intelligence on your whole portfolio
+      - Bespoke onboarding and support
+    note: >-
+      The only sales-gated tier, and the only place "look-alike prospecting" is sold — which is also
+      a component of the MCP dossier tool. See mcp/plinth-us-grants-data-tool-crosswalk.yml.
+
+separate_meters:
+  note: >-
+    Three meters run independently and exhaust independently — REST calls per month, AI questions
+    per day, and unmetered entity resolution. "It's metered separately from your API calls —
+    running out of one doesn't touch the other."
+
+bulk:
+  available: on request
+  note: '"Need more than that, or a bulk extract? Talk to us." No published bulk price or data-dump product.'
+
+data_licence:
+  source_data: IRS Form 990 / 990-PF e-file data — public domain
+  source_url: https://www.irs.gov/charities-non-profits/tax-exempt-organization-search-bulk-data-downloads
+  compilation: >-
+    "the compilation, matching and classification are ours. Cite us and link the page you took a
+    figure from — and take the methodology with it."
+  terms: https://www.useplinth.com/terms
+  note: >-
+    Relevant to pricing because the underlying corpus is free public data: what is sold is the
+    compilation, the matching and the query surface, not the facts.
+
+marketing_inconsistency:
+  observed: '2026-08-14'
+  detail: >-
+    Resolved since the profile was written. Both the pricing page and the developer docs now state
+    17.9M grants / 205k funders; the earlier ~13M/184k figures cited in PROFILE.md are no longer
+    present on /pricing. The warehouse-schema page agrees (17.9 million grants, 205,000 funders).

@@ -1,0 +1,115 @@
+generated: '2026-08-14'
+method: searched
+source: https://data.useplinth.com/glossary
+corroboration:
+  - https://data.useplinth.com/methodology
+  - https://data.useplinth.com/developers/schema
+  - openapi/plinth-us-grants-data-openapi.json
+checked: '2026-08-14'
+summary: >-
+  Plinth publishes a domain glossary — ten defined terms covering the kinds of US grantmaker, the
+  IRS classifications, and the measures the product computes. Definitions below are quoted VERBATIM
+  from the provider's glossary page; the api_binding on each term is this pipeline's mapping of the
+  term onto the API surface where it appears, and is marked as such.
+term_count: 10
+verbatim: true
+
+terms:
+  - term: Donor-advised fund
+    abbreviation: DAF
+    definition: >-
+      A charitable account a donor funds upfront for the tax deduction, then recommends grants from
+      over time.
+    api_binding:
+      surface: 'warehouse table `funder_kind` (is_daf, daf_cnt, daf_grants, daf_confidence, daf_signal, funder_kind)'
+      note: >-
+        Operationalized, not just defined. daf_signal records HOW a funder was classified:
+        'schedule-d' (explicit from the 990 filing — authoritative), 'name' (named DAF sponsor or
+        fiscal sponsor), 'mega-fanout' (50k+ grantees, e.g. a corporate match conduit).
+      derived: true
+
+  - term: Form 990
+    definition: The annual information return most US tax-exempt organizations file with the IRS.
+    api_binding:
+      surface: 'The source of the entire corpus. `orgs.return_type` splits it: 990 (~374k public charities), 990EZ (~267k small orgs), 990PF (~137k private foundations), 990T (~16k).'
+      derived: true
+
+  - term: NTEE code
+    definition: >-
+      The IRS classification that sorts a nonprofit into a cause area such as education or health.
+    api_binding:
+      surface: '`subject` filter on /api/grants/*; `org_bmf.ntee_cd` in the warehouse'
+      note: >-
+        The 26-letter major-group mapping is published on the warehouse-schema page and captured in
+        data-model/plinth-us-grants-data-data-model.yml. Coverage ceiling: only grants with a matched
+        recipient_ein carry an NTEE, so any by-cause total covers ~67% of grant dollars.
+      derived: true
+
+  - term: EIN (Employer Identification Number)
+    definition: The nine-digit number that uniquely identifies a US organization to the IRS.
+    api_binding:
+      surface: '`funder_id` / `recip_id` filters, the `{ein}` path parameter on all three organization endpoints, and the primary key of the whole US data model'
+      note: 'TEXT(9), zero-padded. GET /api/search resolves a name to one, unkeyed and unmetered.'
+      derived: true
+
+  - term: Private foundation
+    definition: >-
+      A grantmaking charity, usually endowed by a single source, that files Form 990-PF.
+    api_binding:
+      surface: "`funder_kind.funder_kind = 'private_foundation'`; `orgs.return_type = '990PF'` (~137k)"
+      derived: true
+
+  - term: Community foundation
+    definition: A public charity that pools donations to fund causes in a specific place.
+    api_binding:
+      surface: "`funder_kind.funder_kind = 'public_charity'` combined with `service_area` for the place"
+      derived: true
+      confidence: medium
+      note: Not separately flagged in the published schema; inferred from the classification columns.
+
+  - term: Fiscal sponsor
+    definition: >-
+      An established charity that receives grants on behalf of a project without its own tax-exempt
+      status.
+    api_binding:
+      surface: "`funder_kind.daf_signal = 'name'` treats named fiscal sponsors alongside DAF sponsors"
+      derived: true
+
+  - term: Regranter (intermediary)
+    definition: >-
+      An organization that both receives and makes grants, sitting between funders and the charities
+      doing the work.
+    api_binding:
+      surface: 'An org appearing as both funder_ein and recipient_ein in `grants`'
+      note: >-
+        Plinth publishes a standing report on this layer — https://data.useplinth.com/intermediaries
+        — headlined "51% of grant dollars pass through an intermediary."
+      derived: true
+
+  - term: Co-funder graph
+    definition: The network linking funders that support the same organizations.
+    api_binding:
+      surface: 'Rendered on each foundation page; reachable in SQL by self-joining `grants` on recipient_ein'
+      note: >-
+        Distinct from `board_link`, which links organizations by shared TRUSTEE rather than by
+        shared grantee.
+      derived: true
+
+  - term: In-state share
+    definition: The share of a state's grant dollars that stay within that state.
+    api_binding:
+      surface: 'Computed measure; rendered at https://data.useplinth.com/funding. Reproducible in SQL from grants.recipient_state against the funder state in orgs.'
+      derived: true
+
+related_reference_pages_note: Plinth's other standing reference surfaces, all linked from the glossary and llms.txt.
+related_reference_pages:
+  - {title: What this database is, url: 'https://data.useplinth.com/us-nonprofit-data'}
+  - {title: Methodology — how the figures are built, url: 'https://data.useplinth.com/methodology'}
+  - {title: Warehouse schema — every queryable table and its caveats, url: 'https://data.useplinth.com/developers/schema'}
+  - {title: The regranting layer, url: 'https://data.useplinth.com/intermediaries'}
+  - {title: The DAF merry-go-round, url: 'https://data.useplinth.com/daf'}
+  - {title: Funder size, url: 'https://data.useplinth.com/reports/size'}
+  - {title: Grant renewal, url: 'https://data.useplinth.com/reports/renewal'}
+  - {title: Funder clusters, url: 'https://data.useplinth.com/clusters'}
+  - {title: Funding by state, url: 'https://data.useplinth.com/funding'}
+  - {title: Funding by cause, url: 'https://data.useplinth.com/causes'}

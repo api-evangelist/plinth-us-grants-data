@@ -1,0 +1,153 @@
+# Spectral ruleset for the Plinth Grants API's OpenAPI description.
+#
+# Published at https://data.useplinth.com/spectral/grants-api.yaml and referenced from
+# /.well-known/apis.json (property type X-SpectralRules) so anyone — an API directory, a consumer,
+# a governance tool — can check our spec against the rules WE say it holds to, instead of taking
+# the word of a marketing page. Governance you publish is checkable; governance you assert is not.
+#
+# Run it:
+#   npx @stoplight/spectral-cli lint config/openapi.snapshot.json -r public/spectral/grants-api.yaml
+#   npx @stoplight/spectral-cli lint https://data.useplinth.com/openapi.json \
+#     -r https://data.useplinth.com/spectral/grants-api.yaml
+#
+# These rules are not aspirational: the spec passes them today, and it is generated
+# (pipeline/grants_api.py::_public_openapi) rather than hand-written, so keeping it that way is a
+# code change, not a documentation chore. pipeline/eval/openapi_snapshot_test.py asserts the same
+# invariants in CI-runnable form for the cases Spectral cannot express.
+extends: [[spectral:oas, recommended]]
+
+rules:
+  # ── Identity ────────────────────────────────────────────────────────────────────────────────
+  # The spec is generated on Cloud Run but describes the API as the public reaches it. If `servers`
+  # ever points at the Cloud Run hostname, every generated client calls a host that answers 403.
+  plinth-servers-are-the-public-origin:
+    description: servers must be the public origin, not the Cloud Run service URL.
+    message: "{{property}} is not the public origin ({{value}})"
+    severity: error
+    given: "$.servers[*].url"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^https://data\\.useplinth\\.com$"
+
+  # Everything public is proxied under /api. A path published without the prefix is a 404 with a
+  # spec that swears otherwise.
+  plinth-paths-under-api:
+    description: Every published path lives under /api.
+    severity: error
+    given: "$.paths[*]~"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^/api/"
+
+  # ── Operations ──────────────────────────────────────────────────────────────────────────────
+  # operationId is the method name in every generated SDK. FastAPI's default
+  # ("funders_grants_funders_get") is a name no human would type twice.
+  plinth-operation-id-is-camel-case:
+    description: operationId must be camelCase — it becomes the SDK method name.
+    message: "{{value}} is not camelCase"
+    severity: error
+    given: "$.paths[*][get,post,put,patch,delete].operationId"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-z][A-Za-z0-9]+$"
+
+  plinth-operation-is-tagged:
+    description: Every operation belongs to exactly one documented group.
+    severity: error
+    given: "$.paths[*][get,post,put,patch,delete]"
+    then:
+      field: tags
+      function: schema
+      functionOptions:
+        schema:
+          type: array
+          minItems: 1
+          maxItems: 1
+
+  # A summary is a label; the description is what an agent reads to decide whether this is the
+  # endpoint it wants. Both, or the spec is a list of URLs.
+  plinth-operation-is-described:
+    description: Every operation carries a summary and a description of real length.
+    severity: error
+    given: "$.paths[*][get,post,put,patch,delete]"
+    then:
+      - field: summary
+        function: truthy
+      - field: description
+        function: length
+        functionOptions:
+          min: 40
+
+  # ── Access ──────────────────────────────────────────────────────────────────────────────────
+  # Metering is middleware, so nothing in a route signature implies these. An operation that only
+  # ever promises 200 sends its caller to production to discover the failure modes.
+  plinth-metered-errors-documented:
+    description: A keyed operation documents 401 (no/unknown key) and 402 (allowance spent or plan required).
+    message: "keyed operations must document 401 and 402"
+    severity: error
+    given: "$.paths[*][get,post,put,patch,delete]"
+    then:
+      function: schema
+      functionOptions:
+        dialect: draft7
+        schema:
+          # `security: []` is how an operation declares itself un-keyed (/api/search). Anything that
+          # does NOT override the global security requirement is metered and must document both.
+          if:
+            not:
+              required: [security]
+          then:
+            type: object
+            required: [responses]
+            properties:
+              responses:
+                type: object
+                required: ["401", "402"]
+
+  plinth-api-key-scheme-declared:
+    description: The X-API-Key scheme is declared and applied globally.
+    severity: error
+    given: "$"
+    then:
+      - field: components.securitySchemes.ApiKeyAuth.name
+        function: pattern
+        functionOptions:
+          match: "^X-API-Key$"
+      - field: security
+        function: truthy
+
+  # ── Provenance and terms ────────────────────────────────────────────────────────────────────
+  # The data is public-domain IRS filing data and the API has terms; a machine reading only this
+  # document should not have to guess either.
+  plinth-info-states-terms-and-licence:
+    description: info declares termsOfService, a licence and a contact.
+    severity: error
+    given: "$.info"
+    then:
+      - field: termsOfService
+        function: truthy
+      - field: license
+        function: truthy
+      - field: contact
+        function: truthy
+
+  plinth-external-docs-present:
+    description: The spec links the human documentation.
+    severity: warn
+    given: "$"
+    then:
+      field: externalDocs
+      function: truthy
+
+  # Every URL we publish is https — a spec that hands an agent an http:// URL invites a downgrade.
+  plinth-urls-are-https:
+    description: Every URL in the description is https.
+    severity: error
+    given: "$..[?(@property === 'url')]"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^(https://|mailto:)"
