@@ -9,7 +9,7 @@ description: >-
   agents. Entity resolution is free and unmetered. Published by Plinth, trading name of Time to
   Spare Ltd (UK Companies House 11530023), which also operates plinth.org.uk in the UK.
 image: https://data.useplinth.com/plinth-logo.svg
-url: https://plinth-us-grants-data.apievangelist.com/apis.yml
+url: https://raw.githubusercontent.com/api-evangelist/plinth-us-grants-data/refs/heads/main/apis.yml
 created: '2026-08-13'
 modified: '2026-08-14'
 specificationVersion: '0.21'
