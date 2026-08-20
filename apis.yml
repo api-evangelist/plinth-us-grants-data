@@ -16,6 +16,20 @@ specificationVersion: '0.23'
 tags:
   - Philanthropy
   - Grants
+  - Non-Profit
+  - Foundations
+  - IRS 990
+  - Open Data
+  - Government Spending
+  - Research
+  - Agents
+  - REST
+  - JSON
+  - MCP
+  - SQL
+tags_raw:
+  - Philanthropy
+  - Grants
   - Nonprofits
   - Foundations
   - IRS 990
@@ -94,6 +108,8 @@ apis:
   humanURL: https://data.useplinth.com/developers
   baseURL: https://data.useplinth.com/api
   tags:
+  - Organization
+  tags_raw:
   - Organizations
   properties:
   - type: OpenAPI
