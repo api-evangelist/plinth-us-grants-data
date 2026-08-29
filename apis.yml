@@ -8,6 +8,18 @@ description: >-
   read-only SQL endpoint over a 31-table warehouse, and a hosted OAuth 2.1 MCP connector for AI
   agents. Entity resolution is free and unmetered. Published by Plinth, trading name of Time to
   Spare Ltd (UK Companies House 11530023), which also operates plinth.org.uk in the UK.
+deliveryModel:
+  model: saas
+  open_source: false
+  commercial: true
+  callable_host: true
+  label: Hosted service · you call their endpoint
+  confidence: high
+  source:
+  - openapi
+  - pricing
+  generated: '2026-08-28'
+  method: derived
 image: https://data.useplinth.com/plinth-logo.svg
 url: https://raw.githubusercontent.com/api-evangelist/plinth-us-grants-data/refs/heads/main/apis.yml
 created: '2026-08-13'
