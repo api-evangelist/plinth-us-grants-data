@@ -1,0 +1,58 @@
+# Kin Score artifact — plinth-us-grants-data — 2026-08-29T230545
+# The API Evangelist rating (https://github.com/api-evangelist/kin-score). Generated; do not edit.
+---
+kin_score:
+  slug: plinth-us-grants-data
+  schema_version: 0.16.0
+  scored_at: '2026-08-29'
+  run_ts: 2026-08-29T230545
+  composite: 67.9
+  band: exemplar
+  facets:
+    discoverability: 81.5
+    contract_quality: 57.1
+    governance: 78.8
+    operational_transparency: 10.5
+    developer_ergonomics: 56.5
+    commercial_clarity: 76.3
+    contract_governance: 78.8
+    access_clarity: 76.3
+  agent_readiness:
+    score: 49.7
+    band: agent-ready
+    band_gated_from: agent-native
+    dimensions:
+      spec_presence: true
+      agentic_access: false
+      reversibility_documented: false
+      mcp_server: documented
+      auth_clarity: served
+      idempotency: false
+      error_semantics: verified
+      openapi_examples: partial
+      rate_limit_signal: documented
+      event_surface_described: false
+      agent_skills: derived
+      well_known_catalog: true
+      consent_identity: false
+      agent_card: false
+      dry_run_mode: false
+      delegated_identity: served
+      protected_resource_metadata: verified
+      dynamic_client_registration: true
+      agentic_commerce: false
+  regulatory:
+    applies: true
+    regime: Government & Public Sector
+    regime_id: government
+    score: 75.9
+    matched_via: tags
+  provenance:
+    mcp: first-party
+    skills: derived
+    conformance: first-party
+    contracts:
+      total: 5
+      derived: 0
+      coverage: 0.0
+      callable: 100.0
