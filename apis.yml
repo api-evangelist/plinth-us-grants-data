@@ -20,6 +20,22 @@ deliveryModel:
   - pricing
   generated: '2026-08-28'
   method: derived
+accessModel:
+  pricing: freemium
+  onboarding: self-serve
+  trial: false
+  try_now: true
+  public: false
+  label: Freemium · Self-serve signup
+  confidence: high
+  source:
+  - plans
+  - authentication
+  - scopes
+  - rate-limits
+  - security
+  generated: '2026-09-02'
+  method: derived
 image: https://data.useplinth.com/plinth-logo.svg
 url: https://raw.githubusercontent.com/api-evangelist/plinth-us-grants-data/refs/heads/main/apis.yml
 created: '2026-08-13'
