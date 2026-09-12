@@ -234,6 +234,8 @@ generated:
   confidence: 97
   at: '2026-08-13T20:59:07.936Z'
 common:
+- type: Website
+  url: https://www.useplinth.com/
 - type: MCPServer
   url: https://data.useplinth.com/api/connector/mcp
 - type: MCPServer
