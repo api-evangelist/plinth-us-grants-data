@@ -1,0 +1,26 @@
+# Front Door AI Index — plinth-us-grants-data — 2026-09-17
+# AI vocabulary counted on the provider's root page. Generated; do not edit.
+# `score` is null unless ownership is `own` — see front_door_ai.py.
+front_door_ai:
+  slug: plinth-us-grants-data
+  lexicon_version: '1.0'
+  probed_at: '2026-09-17'
+  host: www.useplinth.com
+  final_host: www.useplinth.com
+  ownership: own
+  owner: plinth-us-grants-data
+  shares_host_with: null
+  inherited_from: null
+  verdict: scored
+  score: 1
+  host_score: 1
+  density: 0.98
+  words: 1024
+  tiers:
+    agentic: 0
+    core: 1
+    model: 0
+  ambiguous: 6
+  top_terms:
+    intelligence: 6
+    AI: 1

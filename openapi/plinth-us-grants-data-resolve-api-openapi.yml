@@ -2,16 +2,7 @@ openapi: 3.2.0
 info:
   title: Plinth Grants Resolve API
   summary: US foundation and nonprofit funding data from public IRS Form 990 and 990-PF filings.
-  description: 'A read API over the US grantmaking universe, read from public IRS Form 990, 990-EZ and 990-PF e-file filings.
-
-
-    The funder-grantee graph traverses in BOTH directions: filter by `funder_id` for everything a foundation funded, or by `recip_id` for every funder behind a nonprofit.
-
-
-    Start with `/api/search` to turn an organization name into an EIN and a canonical page URL — it needs no key. Every other endpoint requires one (free tier: 50 calls a month).
-
-
-    Figures are read directly from named IRS filings. The IRS releases e-file data on a 12-24 month lag, so every figure is dated to its fiscal year rather than to today. Funding relationships are reported as association, never as causation. Organizations that do not e-file may be absent.'
+  description: A read API over the US grantmaking universe, read from public IRS Form 990, 990-EZ and 990-PF e-file filings.
   version: 1.0.0
   contact:
     name: Plinth
