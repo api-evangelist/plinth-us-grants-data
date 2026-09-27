@@ -75,15 +75,6 @@ paths:
       - sql
 components:
   responses:
-    PaymentRequired:
-      description: The monthly allowance is spent, the account is inactive, or the endpoint needs a paid plan. The message says which.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ApiError'
-          example:
-            code: 402
-            message: monthly API call allowance spent
     Unauthorized:
       description: No API key, or a key we do not recognize.
       content:
@@ -93,6 +84,15 @@ components:
           example:
             code: 401
             message: missing or invalid API key
+    PaymentRequired:
+      description: The monthly allowance is spent, the account is inactive, or the endpoint needs a paid plan. The message says which.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 402
+            message: monthly API call allowance spent
   schemas:
     ApiError:
       type: object

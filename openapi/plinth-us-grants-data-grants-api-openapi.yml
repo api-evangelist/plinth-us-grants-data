@@ -406,6 +406,26 @@ paths:
       description: 'One call for the whole shape of a filter: total dollars, grant count, distinct funders and recipients, plus a year-by-year breakdown. Cheaper than paging the rows to count them.'
 components:
   schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ApiError:
+      type: object
+      description: Every failure answers with this envelope; `message` is safe to show a user.
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+      - code
+      - message
     ValidationError:
       properties:
         loc:
@@ -432,36 +452,7 @@ components:
       - msg
       - type
       title: ValidationError
-    ApiError:
-      type: object
-      description: Every failure answers with this envelope; `message` is safe to show a user.
-      properties:
-        code:
-          type: integer
-        message:
-          type: string
-      required:
-      - code
-      - message
-    HTTPValidationError:
-      properties:
-        detail:
-          items:
-            $ref: '#/components/schemas/ValidationError'
-          type: array
-          title: Detail
-      type: object
-      title: HTTPValidationError
   responses:
-    PaymentRequired:
-      description: The monthly allowance is spent, the account is inactive, or the endpoint needs a paid plan. The message says which.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ApiError'
-          example:
-            code: 402
-            message: monthly API call allowance spent
     Unauthorized:
       description: No API key, or a key we do not recognize.
       content:
@@ -471,6 +462,15 @@ components:
           example:
             code: 401
             message: missing or invalid API key
+    PaymentRequired:
+      description: The monthly allowance is spent, the account is inactive, or the endpoint needs a paid plan. The message says which.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: 402
+            message: monthly API call allowance spent
   securitySchemes:
     ApiKeyAuth:
       type: apiKey
