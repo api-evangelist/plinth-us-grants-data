@@ -112,15 +112,6 @@ paths:
       description: Everything in essentials plus full financials and the resolved geographic service footprint.
 components:
   schemas:
-    HTTPValidationError:
-      properties:
-        detail:
-          items:
-            $ref: '#/components/schemas/ValidationError'
-          type: array
-          title: Detail
-      type: object
-      title: HTTPValidationError
     ApiError:
       type: object
       description: Every failure answers with this envelope; `message` is safe to show a user.
@@ -158,6 +149,15 @@ components:
       - msg
       - type
       title: ValidationError
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
   responses:
     Unauthorized:
       description: No API key, or a key we do not recognize.
