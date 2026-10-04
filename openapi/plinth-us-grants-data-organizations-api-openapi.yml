@@ -112,17 +112,6 @@ paths:
       description: Everything in essentials plus full financials and the resolved geographic service footprint.
 components:
   schemas:
-    ApiError:
-      type: object
-      description: Every failure answers with this envelope; `message` is safe to show a user.
-      properties:
-        code:
-          type: integer
-        message:
-          type: string
-      required:
-      - code
-      - message
     ValidationError:
       properties:
         loc:
@@ -149,6 +138,17 @@ components:
       - msg
       - type
       title: ValidationError
+    ApiError:
+      type: object
+      description: Every failure answers with this envelope; `message` is safe to show a user.
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+      required:
+      - code
+      - message
     HTTPValidationError:
       properties:
         detail:
