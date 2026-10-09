@@ -150,3 +150,36 @@ marketing_inconsistency:
     Resolved since the profile was written. Both the pricing page and the developer docs now state
     17.9M grants / 205k funders; the earlier ~13M/184k figures cited in PROFILE.md are no longer
     present on /pricing. The warehouse-schema page agrees (17.9 million grants, 205,000 funders).
+x-canonical:
+  generated: '2026-10-08'
+  vocabulary: all/0-working/economics/plans-canonical.yml
+  models:
+  - metered
+  - negotiated
+  - subscription
+  units: []
+  plans:
+  - name: Free
+    access: other
+    model: metered
+    model_how: derived
+    units: []
+    periods: []
+  - name: For non-profits
+    access: other
+    model: subscription
+    model_how: derived
+    units: []
+    periods: []
+  - name: For consultants
+    access: other
+    model: subscription
+    model_how: derived
+    units: []
+    periods: []
+  - name: For foundations
+    access: other
+    model: negotiated
+    model_how: derived
+    units: []
+    periods: []

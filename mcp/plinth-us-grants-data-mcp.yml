@@ -84,3 +84,20 @@ tools:
     description: '"Natural-language Q&A grounded strictly in that foundation''s own IRS filings."'
     source: https://data.useplinth.com/connect
 crosswalk: mcp/plinth-us-grants-data-tool-crosswalk.yml
+rfc9728:
+  endpoint: https://data.useplinth.com/api/connector/mcp
+  metadata_url: https://data.useplinth.com/.well-known/oauth-protected-resource
+  discovered_via: WWW-Authenticate resource_metadata on an anonymous POST initialize
+  fetched: '2026-09-25'
+  http_status: 200
+  content_type: application/json
+  document:
+    resource: https://data.useplinth.com/api/connector/mcp
+    authorization_servers:
+    - https://data.useplinth.com
+    scopes_supported:
+    - plinth:read
+    bearer_methods_supported:
+    - header
+    resource_name: Plinth Grants Intelligence
+    resource_documentation: https://data.useplinth.com/account
